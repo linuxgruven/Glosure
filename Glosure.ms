@@ -108,7 +108,7 @@ eval = function(expr, env)
     if not expr isa list then
         if expr isa number then return expr
         if expr[0] == "'" then return expr[1:]
-        return env.get(expr) //this will cause injection but this is an intentional backdoor.
+        return env.get(expr)
     end if
     if not expr then return null
     first = expr[0]
@@ -236,7 +236,7 @@ globalEnv = Env(null)
         for i in range(0, args.len-1, 2)
             key = args[i]
             value = args[i + 1]
-            if key isa string then key = key.replace("'", "")
+            if key isa string then key = key[1:]
             ret[key] = value
         end for
         return ret
@@ -372,9 +372,7 @@ for method in general
 end for
 
 execute = function(codeStr)
-    tokens = lexer(codeStr)
-    ast = parser(tokens)
-    return eval(ast, globalEnv)
+    return eval(parser(lexer(codeStr)), globalEnv)
 end function
 
 repl = function
