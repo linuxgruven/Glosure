@@ -203,6 +203,33 @@ globalEnv = Env(null)
     globalEnv.vars["null"] = function(args) // WARNING: only use null for interacting with miniscript.
         return null
     end function
+    globalEnv.vars["&"] = function(args)
+        return args[0] and args[1]
+    end function
+    globalEnv.vars["|"] = function(args)
+        return args[0] or args[1]
+    end function
+    globalEnv.vars["!"] = function(args)
+        return not args[0]
+    end function
+    globalEnv.vars["=="] = function(args)
+        return args[0] == args[1]
+    end function
+    globalEnv.vars["!="] = function(args)
+        return args[0] != args[1]
+    end function
+    globalEnv.vars[">="] = function(args)
+        return args[0] >= args[1]
+    end function
+    globalEnv.vars["<="] = function(args)
+        return args[0] <= args[1]
+    end function
+    globalEnv.vars[">"] = function(args)
+        return args[0] > args[1]
+    end function
+    globalEnv.vars["<"] = function(args)
+        return args[0] < args[1]
+    end function
     globalEnv.vars["*"] = function(args)
         return args[0] * args[1]
     end function
@@ -237,7 +264,7 @@ globalEnv = Env(null)
         end for
         return ret
     end function
-    globalEnv.vars.gh_object = function(args)
+    globalEnv.vars.dot = function(args)
         length = []
         length.push(function(object, method, args))
             method = @object[@method]
