@@ -1,26 +1,3 @@
-tree = function(anyObject, depth = -1) //basically str() without depth limit, this walk the tree with recursion until everything is consumed.
-    if depth == 0 then return "..."
-    if @anyObject isa map then
-        ret = []
-        for pair in anyObject
-            ret.push(tree(@pair.key, depth - 1) + ": " + tree(@pair.value, depth - 1))
-        end for
-        return "{" + ret.join(", ") + "}"
-    else
-        if @anyObject isa funcRef or anyObject isa number then return "" + @anyObject
-        if anyObject isa string then return """" + anyObject + """"
-        if anyObject isa list then
-            ret = []
-            for item in anyObject
-                ret.push(tree(@item, depth - 1))
-            end for
-            return "[" + ret.join(", ") + "]"
-        end if
-        if anyObject == null then return "null"
-        return "" + anyObject 
-    end if
-end function
-
 Reader = function(stri)
     reader = {}
     reader.__stri = stri
