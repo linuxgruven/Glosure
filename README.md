@@ -30,7 +30,7 @@ Use `(false)` to repersent `false`, you should use `0` instead.
 
 Use `(null)` to repersent `null`, this is dangerous and can cause unexpected crash. You should only use this when you have to.
 
-Use `(gh_object object method_name argument_1 argument_2 argument_N)` to access a method under a grey hack object. This is dangerous and can cause crash if used incorrectly, read Manual.exe while using it.
+Use `(dot object method_name argument_1 argument_2 argument_N)` to access a method under a grey hack object. This is dangerous and can cause crash if used incorrectly, read Manual.exe while using it.
 
 ## Example
 TODO
