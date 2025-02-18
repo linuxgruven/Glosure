@@ -33,4 +33,4 @@ Use `(null)` to repersent `null`, this is dangerous and can cause unexpected cra
 Use `(dot object method_name argument_1 argument_2 argument_N)` to access a method under a grey hack object. This is dangerous and can cause crash if used incorrectly, read Manual.exe while using it.
 
 ## Example
-TODO
+`(def cat (lambda (path) (dot (dot (dot (get_shell '' '') 'host_computer') 'File' path) 'get_content')))` A cat command, use like `(cat '/path/to/file')`
