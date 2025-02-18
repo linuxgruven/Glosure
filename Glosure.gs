@@ -1,4 +1,29 @@
-Reader = function(stri)
+tree = function(anyObject, depth = 5) //basically str() with custom depth limit, this walk the tree with recursion until everything is consumed.
+    if depth == 0 then return "..."
+    if @anyObject isa map then
+        if hasIndex(anyObject, "classID") then return @anyObject.classID //deal with Grey Hack object
+        if hasIndex(anyObject, "type") then return @anyObject.type //deal with Glosure object
+        ret = []
+        for pair in anyObject
+            ret.push(tree(@pair.key, depth - 1) + ": " + tree(@pair.value, depth - 1))
+        end for
+        return "{" + ret.join(", ") + "}"
+    else
+        if @anyObject isa funcRef or anyObject isa number then return "" + @anyObject
+        if anyObject isa string then return """" + anyObject + """"
+        if anyObject isa list then
+            ret = []
+            for item in anyObject
+                ret.push(tree(@item, depth - 1))
+            end for
+            return "[" + ret.join(", ") + "]"
+        end if
+        if anyObject == null then return "null"
+        return "" + anyObject 
+    end if
+end function
+
+Reader = function(stri) //A reader that consumes tokens or chars, used in lexer and parser.
     reader = {}
     reader.__stri = stri
     reader.__pos = -1
@@ -12,12 +37,12 @@ Reader = function(stri)
     return reader
 end function
 
-lexer = function(codeStr)
+lexer = function(codeStr) //lexical analysis for Glosure, ignore whitespaces, comments, commas.
     tokens = []
     reader = Reader(codeStr)
     while reader.peek
         c = reader.next
-        if (", " + char(9) + char(10)).indexOf(c) != null then
+        if (", " + char(9) + char(10) + char(13)).indexOf(c) != null then
             continue
         else if "()".indexOf(c) != null then
             tokens.push(c)
@@ -29,7 +54,7 @@ lexer = function(codeStr)
             tokens.push(token.join("").val)
         else if c == "'" then
             token = ["'"]
-            while reader.peek and reader.peek != "'"
+            while reader.peek != null and reader.peek != "'"
                 c = reader.next
                 if reader.peek == "\" and reader.peek(2) then //"
                     c = reader.next(2)
@@ -37,6 +62,8 @@ lexer = function(codeStr)
                         token.push(char(10))
                     else if c == "t" then
                         token.push(char(9))
+                    else if c == "r" then
+                        token.push(char(13))
                     else
                         token.push(c)
                     end if
@@ -46,9 +73,13 @@ lexer = function(codeStr)
             end while
             reader.next
             tokens.push(token.join(""))
+        else if c == ";" then
+            while reader.peek != null and reader.peek != char(10)
+                reader.next
+            end while
         else
             token = [c]
-            while reader.peek and (" '()" + char(9) + char(10)).indexOf(reader.peek) == null
+            while reader.peek != null and (" '();" + char(9) + char(10) + char(13)).indexOf(reader.peek) == null
                 token.push(reader.next)
             end while
             tokens.push(token.join(""))
@@ -57,7 +88,7 @@ lexer = function(codeStr)
     return tokens
 end function
 
-parser = function(tokens)
+parser = function(tokens) //Syntax analysis for Glosure, only parse one atom. Use (begin arguments) to form a multiple atom program.
     reader = Reader(tokens)
     readList = function
         lst = []
@@ -77,7 +108,7 @@ parser = function(tokens)
     return readAtom
 end function
 
-Env = function(parent)
+Env = function(parent) //environment for Glosure, only build new environment when calling lambda or expending macro.
     env = {}
     env.vars = {}
     env.parent = parent
@@ -92,19 +123,7 @@ Env = function(parent)
     return env
 end function
 
-applyMacro = function(macro, args, env)
-    newEnv = Env(macro.env)
-    for i in indexes(macro.params)
-        newEnv.set(macro.params[i], args[i])
-    end for
-    result = null
-    for bodyExpr in macro.body
-        result = eval(bodyExpr, newEnv)
-    end for
-    return result
-end function
-
-eval = function(expr, env)
+eval = function(expr, env) //evaluate Glosure s-expression
     if not expr isa list then
         if expr isa number then return expr
         if expr[0] == "'" then return expr[1:]
@@ -123,16 +142,15 @@ eval = function(expr, env)
         else
             if expr.len > 3 then return eval(expr[3], env) else return null
         end if
+    else if first == "while" then
+        result = null
+        while eval(expr[1], env)
+            result = eval(expr[2], env)
+        end while
+        return result
     else if first == "lambda" then
         return {
             "type": "lambda",
-            "params": expr[1],
-            "body": expr[2:],
-            "env": env,
-        }
-    else if first == "macro" then
-        return {
-            "type": "macro",
             "params": expr[1],
             "body": expr[2:],
             "env": env,
@@ -143,13 +161,15 @@ eval = function(expr, env)
             result = eval(stmt, env)
         end for
         return result
+    else if first == "exec" then
+        result = null
+        for stmt in expr[1:]
+            result = execute(stmt, env)
+        end for
+        return result
     else
         func = eval(first, env)
         args = expr[1:]
-        if @func isa map and func.type == "macro" then
-            expended = applyMacro(func, args, env)
-            return eval(expended, env)
-        end if
         evaluatedArgs = []
         for arg in args
             evaluatedArgs.push(eval(arg, env))
@@ -170,7 +190,7 @@ eval = function(expr, env)
     end if
 end function
 
-globalEnv = Env(null)
+globalEnv = Env(null) //global and general methods do not have access to environment. those are for keywords.
     globalEnv.vars["true"] = function(args)
         return true
     end function
@@ -222,11 +242,25 @@ globalEnv = Env(null)
     globalEnv.vars["^"] = function(args)
         return args[0] ^ args[1]
     end function
-    globalEnv.vars.print = function(args)
-        return print(args.join(" "))
+    globalEnv.vars.concat = function(args)
+        result = ""
+        for arg in args
+            result = result + @arg
+        end for
+        return result
     end function
-    globalEnv.vars.input = function(args)
-        return user_input(args[0], args[1], args[2])
+    globalEnv.vars.at = function(args)
+        return @args[0][args[1]]
+    end function
+    globalEnv.vars.print = function(args)
+        if args.len > 1 then return print(tree(args[0]), args[1])
+        return print(tree(args[0]))
+    end function
+    globalEnv.vars.time = function(args)
+        return time
+    end function
+    globalEnv.vars.round = function(args)
+        return round(args[0], args[1])
     end function
     globalEnv.vars.list = function(args)
         return args
@@ -366,18 +400,28 @@ general = {}
     general.whois = function(args)
         return whois(@args[0])
     end function
+    general.to_int = function(args)
+        return to_int(args[0])
+    end function
 
 for method in general
     globalEnv.vars[method.key] = @method.value
 end for
 
-execute = function(codeStr)
-    return eval(parser(lexer(codeStr)), globalEnv)
+execute = function(codeStr, env)
+    return eval(parser(lexer(codeStr)), env)
 end function
 
-repl = function
+repl = function(env)
     while true
-        print(eval(parser(lexer(user_input("</> "))), globalEnv))
+        codeStr = user_input("</> ")
+        if codeStr == ";quit" then break
+        result = eval(parser(lexer(codeStr)), env)
+        if @result isa string then print(result) else print(tree(result))
     end while
 end function
-repl
+
+prepareCode = "()" //This one is hardcoded code you can run at start up.
+env = Env(globalEnv)
+execute(prepareCode, env)
+repl(env)
