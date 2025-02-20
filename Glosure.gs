@@ -23,7 +23,61 @@ tree = function(anyObject, depth = 5) //basically str() with custom depth limit,
     end if
 end function
 
-
+reader = function(codeStr)
+    codeStr = values(codeStr)
+    stack = [[]]
+    while len(codeStr)
+        token = []
+        c = codeStr.pull
+        if (", " + char(9) + char(10) + char(13)).indexOf(c) != null then
+            continue
+        else if c == "(" then
+            stack.push([])
+        else if c == ")" then
+            stack[-1].push(stack.pop)
+        else if indexOf("0123456789.", c) != null then
+            token.push(c)
+            while len(codeStr) and indexOf("0123456789.", codeStr[0]) != null
+                token.push(codeStr.pull)
+            end while
+            stack[-1].push(val(token.join("")))
+        else if c == "'" then
+            token.push(c)
+            while len(codeStr) and codeStr[0] != "'"
+                c = codeStr.pull
+                if c == "\" then //"
+                    if codeStr[0] == "t" then
+                        token.push(char(9))
+                        codeStr.pull
+                    else if codeStr[0] == "n" then
+                        token.push(char(10))
+                        codeStr.pull
+                    else if codeStr[0] == "r" then
+                        token.push(char(13))
+                        codeStr.pull
+                    else
+                        token.push(codeStr.pull)
+                    end if
+                else
+                    token.push(c)
+                end if
+            end while
+            token.pull
+            stack[-1].push(token.join(""))
+        else if c == ";" then
+            while len(codeStr) and codeStr[0] != char(10)
+                codeStr.pull
+            end while
+        else
+            token.push(c)
+            while len(codeStr) and (" .'();" + char(9) + char(10) + char(13)).indexOf(codeStr[0]) == null
+                token.push(codeStr.pull)
+            end while
+            stacks[-1].push(token.join(""))
+        end if
+    end while
+    return stacks[0]
+end function
 
 Reader = function(stri) //A reader that consumes tokens or chars, used in lexer and parser.
     reader = {}
