@@ -23,6 +23,8 @@ tree = function(anyObject, depth = 5) //basically str() with custom depth limit,
     end if
 end function
 
+
+
 Reader = function(stri) //A reader that consumes tokens or chars, used in lexer and parser.
     reader = {}
     reader.__stri = stri
