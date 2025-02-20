@@ -1,8 +1,11 @@
+Error = function(msg) //This is up to implementation to decide.
+    return exit("<color=red><noparse>" + msg + "</noparse></color>") //reference implementation simply panics. 
+end function
+
 tree = function(anyObject, depth = 5) //basically str() with custom depth limit, this walk the tree with recursion until everything is consumed.
     if depth == 0 then return "..."
     if @anyObject isa map then
-        if hasIndex(anyObject, "classID") then return @anyObject.classID //deal with Grey Hack object
-        if hasIndex(anyObject, "type") then return @anyObject.type //deal with Glosure object
+        if hasIndex(anyObject, "classID") then return @anyObject.classID //doesnt unfold Grey Hack object anymore
         ret = []
         for pair in anyObject
             ret.push(tree(@pair.key, depth - 1) + ": " + tree(@pair.value, depth - 1))
@@ -23,264 +26,176 @@ tree = function(anyObject, depth = 5) //basically str() with custom depth limit,
     end if
 end function
 
-Reader = function(stri) //A reader that consumes tokens or chars, used in lexer and parser.
-    reader = {}
-    reader.__stri = stri
-    reader.__pos = -1
-    reader.next = function(num = 1)
-        self.__pos = self.__pos + num
-        if self.__pos >= self.__stri.len then return null else return self.__stri[self.__pos]
-    end function
-    reader.peek = function(num = 1)
-        if self.__pos + num >= self.__stri.len then return null else return self.__stri[self.__pos + num]
-    end function
-    return reader
-end function
-
-lexer = function(codeStr) //lexical analysis for Glosure, ignore whitespaces, comments, commas.
-    tokens = []
-    reader = Reader(codeStr)
-    while reader.peek
-        c = reader.next
-        if (", " + char(9) + char(10) + char(13)).indexOf(c) != null then
+reader = function(codeStr) //code string to s-expression
+    codeStr = values(codeStr)
+    stack = [[]]
+    while len(codeStr)
+        token = []
+        c = codeStr.pull
+        if (", " + char(9) + char(10) + char(13)).indexOf(c) != null then //ignore whitespace
             continue
-        else if "()".indexOf(c) != null then
-            tokens.push(c)
-        else if "0123456789.".indexOf(c) != null then
-            token = [c]
-            while reader.peek != null and "0123456789.".indexOf(reader.peek) != null
-                token.push(reader.next)
+        else if c == "(" then //parse a new list
+            stack.push([])
+        else if c == ")" then //end a list
+            curr = stack.pop
+            stack[-1].push(curr)
+        else if indexOf("0123456789.", c) != null then //tokenize number
+            token.push(c)
+            while len(codeStr) and indexOf("0123456789.", codeStr[0]) != null
+                token.push(codeStr.pull)
             end while
-            tokens.push(token.join("").val)
-        else if c == "'" then
-            token = ["'"]
-            while reader.peek != null and reader.peek != "'"
-                c = reader.next
-                if reader.peek == "\" and reader.peek(2) then //"
-                    c = reader.next(2)
-                    if c == "n" then
-                        token.push(char(10))
-                    else if c == "t" then
+            stack[-1].push(val(token.join("")))
+        else if c == "'" then //tokenize string
+            token.push(c)
+            while len(codeStr) and codeStr[0] != "'"
+                c = codeStr.pull
+                if c == "\" then //"
+                    if codeStr[0] == "t" then
                         token.push(char(9))
-                    else if c == "r" then
+                        codeStr.pull
+                    else if codeStr[0] == "n" then
+                        token.push(char(10))
+                        codeStr.pull
+                    else if codeStr[0] == "r" then
                         token.push(char(13))
+                        codeStr.pull
                     else
-                        token.push(c)
+                        token.push(codeStr.pull)
                     end if
                 else
                     token.push(c)
                 end if
             end while
-            reader.next
-            tokens.push(token.join(""))
-        else if c == ";" then
-            while reader.peek != null and reader.peek != char(10)
-                reader.next
+            codeStr.pull
+            stack[-1].push(token.join(""))
+        else if c == ";" then //ignore comment
+            while len(codeStr) and codeStr[0] != char(10)
+                codeStr.pull
             end while
-        else
-            token = [c]
-            while reader.peek != null and (" '();" + char(9) + char(10) + char(13)).indexOf(reader.peek) == null
-                token.push(reader.next)
+        else //tokenize symbol
+            token.push(c)
+            while len(codeStr) and (" .'();" + char(9) + char(10) + char(13)).indexOf(codeStr[0]) == null
+                token.push(codeStr.pull)
             end while
-            tokens.push(token.join(""))
+            stack[-1].push(token.join(""))
         end if
     end while
-    return tokens
+    return ["begin"] + stack[0]
 end function
 
-parser = function(tokens) //Syntax analysis for Glosure, only parse one atom. Use (begin arguments) to form a multiple atom program.
-    reader = Reader(tokens)
-    readList = function
-        lst = []
-        while reader.peek != null
-            atom = readAtom
-            if atom == null then break
-            lst.push(atom)
-        end while
-        return lst
-    end function
-    readAtom = function
-        atom = reader.next
-        if atom == "(" then return readList
-        if atom == ")" then return null
-        return atom
-    end function
-    return readAtom
-end function
-
-Env = function(parent) //environment for Glosure, only build new environment when calling lambda or expending macro.
+Env = function(__outer) //environment for Glosure, only build new environment when calling lambda.
     env = {}
-    env.vars = {}
-    env.parent = parent
-    env.get = function(name)
-        if self.vars.hasIndex(name) then return @self.vars[name]
-        if self.parent then return self.parent.get(name)
-        return exit("Unknown identifier.")
+    env.__outer = __outer
+    env.__local = {}
+    env.get = function(symbol)
+        if self.__local.hasIndex(symbol) then return @self.__local[symbol]
+        if self.__outer then return @self.__outer.get(symbol)
+        return Error("Glosure: Unknown symbol '" + symbol + "'.")
     end function
-    env.set = function(name, value)
-        self.vars[name] = @value
+    env.set = function(symbol, value)
+        self.__local[symbol] = @value
+        return @value
     end function
     return env
 end function
 
 eval = function(expr, env) //evaluate Glosure s-expression
-    if not expr isa list then
-        if expr isa number then return expr
-        if expr[0] == "'" then return expr[1:]
-        return env.get(expr)
+    if not @expr isa list then
+        if not @expr isa string then return @expr
+        if expr[0] == "'" then return expr[1:] else return env.get(expr)
     end if
-    if not expr then return null
+    if not len(expr) then return null
     first = expr[0]
-    if first == "def" then
-        value = eval(expr[2], env)
-        env.set(expr[1], value)
-        return value
-    else if first == "if" then
-        condition = eval(expr[1], env)
-        if condition then
-            return eval(expr[2], env)
-        else
-            if expr.len > 3 then return eval(expr[3], env) else return null
-        end if
-    else if first == "while" then
+    if first == "def" then //bind value to symbol
+        return env.set(expr[1], eval(expr[2], env))
+    else if first == "if" then //if statement
+        if eval(expr[1], env) then return eval(expr[2], env)
+        if expr.len > 3 then return eval(expr[3], env) else return null
+    else if first == "while" then //while loop, with no break keyword.
         result = null
         while eval(expr[1], env)
-            result = eval(expr[2], env)
+            for stmt in expr[2:]
+                result = eval(stmt, env)
+            end for
         end while
-        return result
-    else if first == "lambda" then
+        return @result
+    else if first == "lambda" then //lambda statement
         return {
-            "type": "lambda",
+            "classID": "lambda",
             "params": expr[1],
             "body": expr[2:],
             "env": env,
         }
-    else if first == "begin" then
+    else if first == "begin" then //evaluate each argument and return the last one.
         result = null
         for stmt in expr[1:]
             result = eval(stmt, env)
         end for
-        return result
-    else if first == "exec" then
-        result = null
-        for stmt in expr[1:]
-            result = execute(stmt, env)
-        end for
-        return result
-    else
-        func = eval(first, env)
-        args = expr[1:]
-        evaluatedArgs = []
-        for arg in args
-            evaluatedArgs.push(eval(arg, env))
-        end for
-        if @func isa map and func.type == "lambda" then
-            newEnv = Env(func.env)
-            for i in indexes(func.params)
-                newEnv.set(func.params[i], evaluatedArgs[i])
-            end for
-            result = null
-            for bodyExpr in func.body
-                result = eval(bodyExpr, newEnv)
-            end for
-            return result
-        else if @func isa funcRef then
-            return func(evaluatedArgs)
+        return @result
+    else if first == "exec" then //interpret a string as Glosure code.
+        return execute(eval(expr[1], env), env)
+    else if first == "eval" then //evaluate a list as Glosure code.
+        return eval(eval(expr[1], env), env)
+    else if first == "glosure" then //wrap Glosure value to "glosure"(host function), advanced feature, extremely dangerous
+        value = eval(expr[1], env)
+        if value isa map and value.hasIndex("classID") and value.classID == "lambda" then
+            __eval = @eval
+            __env = @env
+            buildGlosure = function
+                __eval = @outer.__eval
+                __env = @outer.__env
+                lambda = @outer.value
+                glosure0 = function()
+                    return __eval([lambda], __env)
+                end function
+                glosure1 = function(arg0)
+                    return __eval([lambda, @arg0], __env)
+                end function
+                glosure2 = function(arg0, arg1)
+                    return __eval([lambda, @arg0, @arg1], __env)
+                end function
+                glosure3 = function(arg0, arg1, arg2)
+                    return __eval([lambda, @arg0, @arg1, @arg2], __env)
+                end function
+                glosure4 = function(arg0, arg1, arg2, arg3)
+                    return __eval([lambda, @arg0, @arg1, @arg2, arg3], __env)
+                end function
+                glosure5 = function(arg0, arg1, arg2, arg3, arg4)
+                    return __eval([lambda, @arg0, @arg1, @arg2, arg3, arg4], __env)
+                end function
+                if len(lambda.params) == 0 then return @glosure0
+                if len(lambda.params) == 1 then return @glosure1
+                if len(lambda.params) == 2 then return @glosure2
+                if len(lambda.params) == 3 then return @glosure3
+                if len(lambda.params) == 4 then return @glosure4
+                return @glosure5
+            end function
+            return buildGlosure
+        else
+            return @value
         end if
-    end if
-end function
-
-globalEnv = Env(null) //global and general methods do not have access to environment. those are for keywords.
-    globalEnv.vars["true"] = function(args)
-        return true
-    end function
-    globalEnv.vars["false"] = function(args)
-        return false
-    end function
-    globalEnv.vars["null"] = function(args) // WARNING: only use null for interacting with miniscript.
-        return null
-    end function
-    globalEnv.vars["&"] = function(args)
-        return args[0] and args[1]
-    end function
-    globalEnv.vars["|"] = function(args)
-        return args[0] or args[1]
-    end function
-    globalEnv.vars["!"] = function(args)
-        return not args[0]
-    end function
-    globalEnv.vars["=="] = function(args)
-        return args[0] == args[1]
-    end function
-    globalEnv.vars["!="] = function(args)
-        return args[0] != args[1]
-    end function
-    globalEnv.vars[">="] = function(args)
-        return args[0] >= args[1]
-    end function
-    globalEnv.vars["<="] = function(args)
-        return args[0] <= args[1]
-    end function
-    globalEnv.vars[">"] = function(args)
-        return args[0] > args[1]
-    end function
-    globalEnv.vars["<"] = function(args)
-        return args[0] < args[1]
-    end function
-    globalEnv.vars["*"] = function(args)
-        return args[0] * args[1]
-    end function
-    globalEnv.vars["/"] = function(args)
-        return args[0] / args[1]
-    end function
-    globalEnv.vars["+"] = function(args)
-        return args[0] + args[1]
-    end function
-    globalEnv.vars["-"] = function(args)
-        return args[0] - args[1]
-    end function
-    globalEnv.vars["^"] = function(args)
-        return args[0] ^ args[1]
-    end function
-    globalEnv.vars.concat = function(args)
-        result = ""
-        for arg in args
-            result = result + @arg
+    else if first == "reflect" then //reflect Glosure value to host env, advanced feature, extremely dangerous.
+        value = eval(@expr[1], env)
+        routes = []
+        for route in expr[2:]
+            routes.push(eval(@route, env))
         end for
-        return result
-    end function
-    globalEnv.vars.at = function(args)
-        return @args[0][args[1]]
-    end function
-    globalEnv.vars.print = function(args)
-        if args.len > 1 then return print(tree(args[0]), args[1])
-        return print(tree(args[0]))
-    end function
-    globalEnv.vars.time = function(args)
-        return time
-    end function
-    globalEnv.vars.round = function(args)
-        return round(args[0], args[1])
-    end function
-    globalEnv.vars.list = function(args)
-        return args
-    end function
-    globalEnv.vars.map = function(args)
-        ret = {}
-        for i in range(0, args.len-1, 2)
-            key = args[i]
-            value = args[i + 1]
-            if key isa string then key = key[1:]
-            ret[key] = value
+        target = globals
+        for route in routes[:-1]
+            target = target[@route]
         end for
-        return ret
-    end function
-    globalEnv.vars.dot = function(args)
+        target[@routes[-1]] = @value
+        return @value
+    else if first == "dot" then
+        args = []
+        for arg in expr[1:]
+            args.push(eval(@arg, env))
+        end for
         length = []
         length.push(function(object, method, args))
             method = @object[@method]
             return method(object)
-        end function
+        end function 
         length.push(function(object, method, args))
             method = @object[@method]
             return method(object, args[0])
@@ -301,127 +216,146 @@ globalEnv = Env(null) //global and general methods do not have access to environ
             method = @object[@method]
             return method(object, args[0], args[1], args[2], args[3], args[4])
         end function
-        object = args[0]
-        method = args[1]
+        object = @args[0]
+        method = @args[1]
         args = args[2:]
         run = @length[len(args)]
         return run(@object, @method, args)
+    else if first == "list" then
+        args = []
+        for arg in expr[1:]
+            args.push(eval(@arg, env))
+        end for
+        return args
+    else if first == "map" then
+        args = []
+        for arg in expr[1:]
+            args.push(eval(@arg, env))
+        end for
+        ret = {}
+        for i in range(0, args.len - 1, 2)
+            ret[@args[i]] = @args[i + 1]
+        end for
+        return ret
+    else
+        func = eval(first, env)
+        args = expr[1:]
+        evaluatedArgs = []
+        for arg in args
+            evaluatedArgs.push(eval(@arg, env))
+        end for
+        if @func isa map and hasIndex(func, "classID") and func.classID == "lambda" then
+            newEnv = Env(func.env)
+            for i in indexes(func.params)
+                newEnv.set(func.params[i], @evaluatedArgs[i])
+            end for
+            result = null
+            for bodyExpr in func.body
+                result = eval(@bodyExpr, newEnv)
+            end for
+            return @result
+        else if @func isa funcRef then
+            length = []
+            length.push(function(args, func))
+                return func()
+            end function
+            length.push(function(args, func))
+                return func(args[0])
+            end function
+            length.push(function(args, func))
+                return func(args[0], args[1])
+            end function
+            length.push(function(args, func))
+                return func(args[0], args[1], args[2])
+            end function
+            length.push(function(args, func))
+                return func(args[0], args[1], args[2], args[3])
+            end function
+            length.push(function(args, func))
+                return func(args[0], args[1], args[2], args[3], args[4])
+            end function
+            run = @length[len(evaluatedArgs)]
+            return run(evaluatedArgs, @func)
+        end if
+    end if
+end function
+
+globalEnv = Env(null) //global and general methods do not have access to environment. those are for keywords.
+    globalEnv.__local["true"] = function()
+        return true
+    end function
+    globalEnv.__local["false"] = function()
+        return false
+    end function
+    globalEnv.__local["null"] = function() // WARNING: only use null for interacting with miniscript.
+        return null
+    end function
+    globalEnv.__local["&"] = function(a, b)
+        return @a and @b
+    end function
+    globalEnv.__local["|"] = function(a, b)
+        return @a or @b
+    end function
+    globalEnv.__local["!"] = function(a)
+        return not @a
+    end function
+    globalEnv.__local["=="] = function(a, b)
+        return a == b
+    end function
+    globalEnv.__local["!="] = function(a, b)
+        return @a != @b
+    end function
+    globalEnv.__local[">="] = function(a, b)
+        return @a >= @b
+    end function
+    globalEnv.__local["<="] = function(a, b)
+        return @a <= @b
+    end function
+    globalEnv.__local[">"] = function(a, b)
+        return @a > @b
+    end function
+    globalEnv.__local["<"] = function(a, b)
+        return @a < @b
+    end function
+    globalEnv.__local["*"] = function(a, b)
+        return @a * @b
+    end function
+    globalEnv.__local["/"] = function(a, b)
+        return @a / @b
+    end function
+    globalEnv.__local["+"] = function(a, b)
+        return @a + @b
+    end function
+    globalEnv.__local["-"] = function(a, b)
+        return @a - @b
+    end function
+    globalEnv.__local["^"] = function(a, b)
+        return @a ^ (@b)
+    end function
+    globalEnv.__local.at = function(a, b)
+        return @a[@b]
     end function
 
-general = {}
-    general.active_user = function(args)
-        return active_user
-    end function
-    general.bitwise = function(args)
-        return bitwise(@args[0], @args[1], @args[2])
-    end function
-    general.clear_screen = function(args)
-        return clear_screen
-    end function
-    general.command_info = function(args)
-        return command_info(@args[0])
-    end function
-    general.current_date = function(args)
-        return current_date
-    end function
-    general.current_path = function(args)
-        return current_path
-    end function
-    general.exit = function(args)
-        return exit(@args[0])
-    end function
-    general.format_columns = function(args)
-        return format_columns(@args[0])
-    end function
-    general.get_ctf = function(args)
-        return get_ctf(@args[0], @args[1], @args[2])
-    end function
-    general.get_custom_object = function(args)
-        return get_custom_object
-    end function
-    general.get_router = function(args)
-        return get_router(@args[0])
-    end function
-    general.get_shell = function(args)
-        return get_shell(@args[0], @args[1])
-    end function
-    general.get_switch = function(args)
-        return get_switch(@args[0])
-    end function
-    general.home_dir = function(args)
-        return home_dir
-    end function
-    //theres no import_code, sorry.
-    general.include_lib = function(args)
-        return include_lib(@args[0])
-    end function
-    general.is_lan_ip = function(args)
-        return is_lan_ip(@args[0])
-    end function
-    general.is_valid_ip = function(args)
-        return is_valid_ip(@args[0])
-    end function
-    general.launch_path = function(args)
-        return launch_path
-    end function
-    general.mail_login = function(args)
-        return mail_login(@args[0], @args[1])
-    end function
-    general.nslookup = function(args)
-        return nslookup(@args[0])
-    end function
-    general.parent_path = function(args)
-        return parent_path(@args[0])
-    end function
-    general.print = function(args)
-        return print(@args[0])
-    end function
-    general.program_path = function(args)
-        return program_path
-    end function
-    general.reset_ctf_password = function(args)
-        return reset_ctf_password(@args[0])
-    end function
-    general.typeof = function(args)
-        return typeof(@args[0])
-    end function
-    general.user_bank_number = function(args)
-        return user_bank_number
-    end function
-    general.user_input = function(args)
-        return user_input(@args[0], @args[1], @args[2])
-    end function
-    general.user_mail_address = function(args)
-        return user_mail_address
-    end function
-    general.wait = function(args)
-        return wait(@args[0])
-    end function
-    general.whois = function(args)
-        return whois(@args[0])
-    end function
-    general.to_int = function(args)
-        return to_int(args[0])
-    end function
+general = {"active_user": @active_user, "bitwise": @bitwise, "clear_screen": @clear_screen, "command_info": @command_info, "current_date": @current_date, "current_path": @current_path, "exit": @exit, "format_columns": @format_columns, "get_ctf": @get_ctf, "get_custom_object": @get_custom_object, "get_router": @get_router, "get_shell": @get_shell, "get_switch": @get_switch, "home_dir": @home_dir, "include_lib": @include_lib, "is_lan_ip": @is_lan_ip, "is_valid_ip": @is_valid_ip, "launch_path": @launch_path, "mail_login": @mail_login, "nslookup": @nslookup, "parent_path": @parent_path, "print": @print, "program_path": @program_path, "reset_ctf_password": @reset_ctf_password, "typeof": @typeof, "user_bank_number": @user_bank_number, "user_input": @user_input, "user_mail_address": @user_mail_address, "wait": @wait, "whois": @whois, "to_int": @to_int, "time": @time, "abs": @abs, "acos": @acos, "asin": @asin, "atan": @atan, "ceil": @ceil, "char": @char, "cos": @cos, "floor": @floor, "log": @log, "pi": @pi, "range": @range, "round": @round, "rnd": @rnd, "sign": @sign, "sin": @sin, "sqrt": @sqrt, "str": @str, "tan": @tan, "yield": @yield, "slice": @slice}
 
-for method in general
-    globalEnv.vars[method.key] = @method.value
+for method in general + string + list + map
+    globalEnv.__local[method.key] = @method.value
 end for
 
 execute = function(codeStr, env)
-    return eval(parser(lexer(codeStr)), env)
+    return eval(reader(codeStr), env)
 end function
 
 repl = function(env)
     while true
         codeStr = user_input("</> ")
         if codeStr == ";quit" then break
-        result = eval(parser(lexer(codeStr)), env)
+        result = eval(reader(codeStr), env)
         if @result isa string then print(result) else print(tree(result))
     end while
 end function
 
-prepareCode = "()" //This one is hardcoded code you can run at start up.
+prepareCode = "" //This one is hardcoded code you can run at start up.
 env = Env(globalEnv)
 execute(prepareCode, env)
 repl(env)
