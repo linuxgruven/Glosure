@@ -6,7 +6,7 @@ This language was made to achieve the most features with the least code, as a Gr
 You do not need to alter the code and it natively support everything for grey hack, so you do not need to code to do anything anymore, or actually you are just switched from greyscript to coding here.
 
 ## Usage
-This language has no data types of its own and therefore cannot even be called a language. It interacts with the host GreyScript environment through an API.
+This language has 7 datatypes, they are `string` `number` `list` `map` `null` `lambda` `glosure`.
 
 Use `'hi'` to repersent a string `"hi"`
 
@@ -35,6 +35,8 @@ Use `(function_name argument_1 argument_2 argument_N)` to call a binded lambda o
 Use `(dot object method_name argument_1 argument_2 argument_N)` to access a method under a grey hack object. This is dangerous and can cause crash if used incorrectly, read Manual.exe while using it.
 
 `(at name index)` essentially works like `name[index]`, you can use it on any container.
+
+### Tutorial at Tutorial.md
 
 ## Example
 `(def cat (lambda (path) (dot (dot (dot (get_shell) 'host_computer') 'File' path) 'get_content')))` A cat command, use like `(cat '/path/to/file')`

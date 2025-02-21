@@ -1,5 +1,5 @@
 Error = function(msg) //This is up to implementation to decide.
-    return exit("<color=red><noparse>" + msg + "</noparse></color>") //reference implementation simply panics. 
+    return exit("<color=red><noparse>" + @msg + "</noparse></color>") //reference implementation simply panics. 
 end function
 
 tree = function(anyObject, depth = 5) //basically str() with custom depth limit, this walk the tree with recursion until everything is consumed.
@@ -89,12 +89,12 @@ Env = function(__outer) //environment for Glosure, only build new environment wh
     env.__outer = __outer
     env.__local = {}
     env.get = function(symbol)
-        if self.__local.hasIndex(symbol) then return @self.__local[symbol]
+        if hasIndex(self.__local, @symbol) then return @self.__local[@symbol]
         if self.__outer then return @self.__outer.get(symbol)
         return Error("Glosure: Unknown symbol '" + symbol + "'.")
     end function
     env.set = function(symbol, value)
-        self.__local[symbol] = @value
+        self.__local[@symbol] = @value
         return @value
     end function
     return env
@@ -106,38 +106,38 @@ eval = function(expr, env) //evaluate Glosure s-expression
         if expr[0] == "'" then return expr[1:] else return env.get(expr)
     end if
     if not len(expr) then return null
-    first = expr[0]
-    if first == "def" then //bind value to symbol
-        return env.set(expr[1], eval(expr[2], env))
-    else if first == "if" then //if statement
-        if eval(expr[1], env) then return eval(expr[2], env)
-        if expr.len > 3 then return eval(expr[3], env) else return null
-    else if first == "while" then //while loop, with no break keyword.
+    first = @expr[0]
+    if @first == "def" then //bind value to symbol
+        return env.set(@expr[1], eval(@expr[2], env))
+    else if @first == "if" then //if statement
+        if eval(@expr[1], env) then return eval(@expr[2], env)
+        if len(@expr) > 3 then return eval(@expr[3], env) else return null
+    else if @first == "while" then //while loop, with no break keyword.
         result = null
-        while eval(expr[1], env)
-            result = eval(expr[2], env)
+        while eval(@expr[1], env)
+            result = eval(@expr[2], env)
         end while
         return @result
-    else if first == "lambda" then //lambda statement
+    else if @first == "lambda" then //lambda statement
         return {
             "classID": "lambda",
             "params": expr[1],
             "body": expr[2:],
             "env": env,
         }
-    else if first == "begin" then //evaluate each argument and return the last one.
+    else if @first == "begin" then //evaluate each argument and return the last one.
         result = null
         for stmt in expr[1:]
-            result = eval(stmt, env)
+            result = eval(@stmt, env)
         end for
         return @result
-    else if first == "exec" then //interpret a string as Glosure code.
-        return execute(eval(expr[1], env), env)
-    else if first == "eval" then //evaluate a list as Glosure code.
-        return eval(eval(expr[1], env), env)
-    else if first == "glosure" then //wrap Glosure value to "glosure"(host function), advanced feature, extremely dangerous
-        value = eval(expr[1], env)
-        if value isa map and value.hasIndex("classID") and value.classID == "lambda" then
+    else if @first == "exec" then //interpret a string as Glosure code.
+        return execute(eval(@expr[1], env), env)
+    else if @first == "eval" then //evaluate a list as Glosure code.
+        return eval(eval(@expr[1], env), env)
+    else if @first == "glosure" then //wrap Glosure value to "glosure"(host function), advanced feature, extremely dangerous
+        value = eval(@expr[1], env)
+        if @value isa map and hasIndex(@value, "classID") and @value.classID == "lambda" then
             __eval = @eval
             __env = @env
             buildGlosure = function
@@ -157,10 +157,10 @@ eval = function(expr, env) //evaluate Glosure s-expression
                     return __eval([lambda, @arg0, @arg1, @arg2], __env)
                 end function
                 glosure4 = function(arg0, arg1, arg2, arg3)
-                    return __eval([lambda, @arg0, @arg1, @arg2, arg3], __env)
+                    return __eval([lambda, @arg0, @arg1, @arg2, @arg3], __env)
                 end function
                 glosure5 = function(arg0, arg1, arg2, arg3, arg4)
-                    return __eval([lambda, @arg0, @arg1, @arg2, arg3, arg4], __env)
+                    return __eval([lambda, @arg0, @arg1, @arg2, @arg3, @arg4], __env)
                 end function
                 if len(lambda.params) == 0 then return @glosure0
                 if len(lambda.params) == 1 then return @glosure1
@@ -173,7 +173,7 @@ eval = function(expr, env) //evaluate Glosure s-expression
         else
             return @value
         end if
-    else if first == "reflect" then //reflect Glosure value to host env, advanced feature, extremely dangerous.
+    else if @first == "reflect" then //reflect Glosure value to host env, advanced feature, extremely dangerous.
         value = eval(@expr[1], env)
         routes = []
         for route in expr[2:]
@@ -181,11 +181,11 @@ eval = function(expr, env) //evaluate Glosure s-expression
         end for
         target = globals
         for route in routes[:-1]
-            target = target[@route]
+            target = @target[@route]
         end for
         target[@routes[-1]] = @value
         return @value
-    else if first == "dot" then
+    else if @first == "dot" then
         args = []
         for arg in expr[1:]
             args.push(eval(@arg, env))
@@ -220,24 +220,24 @@ eval = function(expr, env) //evaluate Glosure s-expression
         args = args[2:]
         run = @length[len(args)]
         return run(@object, @method, args)
-    else if first == "list" then
+    else if @first == "list" then
         args = []
         for arg in expr[1:]
             args.push(eval(@arg, env))
         end for
         return args
-    else if first == "map" then
+    else if @first == "map" then
         args = []
         for arg in expr[1:]
             args.push(eval(@arg, env))
         end for
         ret = {}
-        for i in range(0, args.len - 1, 2)
+        for i in range(0, len(args) - 1, 2)
             ret[@args[i]] = @args[i + 1]
         end for
-        return ret
+        return @ret
     else
-        func = eval(first, env)
+        func = eval(@first, env)
         args = expr[1:]
         evaluatedArgs = []
         for arg in args
@@ -246,7 +246,7 @@ eval = function(expr, env) //evaluate Glosure s-expression
         if @func isa map and hasIndex(func, "classID") and func.classID == "lambda" then
             newEnv = Env(func.env)
             for i in indexes(func.params)
-                newEnv.set(func.params[i], @evaluatedArgs[i])
+                newEnv.set(@func.params[i], @evaluatedArgs[i])
             end for
             result = null
             for bodyExpr in func.body
@@ -341,7 +341,7 @@ globalEnv = Env(null) //global and general methods do not have access to environ
 general = {"active_user": @active_user, "bitwise": @bitwise, "clear_screen": @clear_screen, "command_info": @command_info, "current_date": @current_date, "current_path": @current_path, "exit": @exit, "format_columns": @format_columns, "get_ctf": @get_ctf, "get_custom_object": @get_custom_object, "get_router": @get_router, "get_shell": @get_shell, "get_switch": @get_switch, "home_dir": @home_dir, "include_lib": @include_lib, "is_lan_ip": @is_lan_ip, "is_valid_ip": @is_valid_ip, "launch_path": @launch_path, "mail_login": @mail_login, "nslookup": @nslookup, "parent_path": @parent_path, "print": @print, "program_path": @program_path, "reset_ctf_password": @reset_ctf_password, "typeof": @typeof, "user_bank_number": @user_bank_number, "user_input": @user_input, "user_mail_address": @user_mail_address, "wait": @wait, "whois": @whois, "to_int": @to_int, "time": @time, "abs": @abs, "acos": @acos, "asin": @asin, "atan": @atan, "ceil": @ceil, "char": @char, "cos": @cos, "floor": @floor, "log": @log, "pi": @pi, "range": @range, "round": @round, "rnd": @rnd, "sign": @sign, "sin": @sin, "sqrt": @sqrt, "str": @str, "tan": @tan, "yield": @yield, "slice": @slice, "params": @params}
 
 for method in general + string + list + map
-    globalEnv.__local[method.key] = @method.value
+    globalEnv.__local[@method.key] = @method.value
 end for
 
 execute = function(codeStr, env)
@@ -353,7 +353,7 @@ repl = function(env)
         codeStr = user_input("</> ")
         if codeStr == ";quit" then break
         result = eval(reader(codeStr), env)
-        if @result isa string then print(result) else print(tree(result))
+        if @result isa string then print(result) else print(tree(@result))
     end while
 end function
 
