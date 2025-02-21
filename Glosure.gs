@@ -193,27 +193,27 @@ eval = function(expr, env) //evaluate Glosure s-expression
         length = []
         length.push(function(object, method, args))
             method = @object[@method]
-            return method(object)
-        end function 
-        length.push(function(object, method, args))
-            method = @object[@method]
-            return method(object, args[0])
+            return method(@object)
         end function
         length.push(function(object, method, args))
             method = @object[@method]
-            return method(object, args[0], args[1])
+            return method(@object, @args[0])
         end function
         length.push(function(object, method, args))
             method = @object[@method]
-            return method(object, args[0], args[1], args[2])
+            return method(@object, @args[0], @args[1])
         end function
         length.push(function(object, method, args))
             method = @object[@method]
-            return method(object, args[0], args[1], args[2], args[3])
+            return method(@object, @args[0], @args[1], @args[2])
         end function
         length.push(function(object, method, args))
             method = @object[@method]
-            return method(object, args[0], args[1], args[2], args[3], args[4])
+            return method(@object, @args[0], @args[1], @args[2], @args[3])
+        end function
+        length.push(function(object, method, args))
+            method = @object[@method]
+            return method(@object, @args[0], @args[1], @args[2], @args[3], @args[4])
         end function
         object = @args[0]
         method = @args[1]
@@ -259,19 +259,19 @@ eval = function(expr, env) //evaluate Glosure s-expression
                 return func()
             end function
             length.push(function(args, func))
-                return func(args[0])
+                return func(@args[0])
             end function
             length.push(function(args, func))
-                return func(args[0], args[1])
+                return func(@args[0], @args[1])
             end function
             length.push(function(args, func))
-                return func(args[0], args[1], args[2])
+                return func(@args[0], @args[1], @args[2])
             end function
             length.push(function(args, func))
-                return func(args[0], args[1], args[2], args[3])
+                return func(@args[0], @args[1], @args[2], @args[3])
             end function
             length.push(function(args, func))
-                return func(args[0], args[1], args[2], args[3], args[4])
+                return func(@args[0], @args[1], @args[2], @args[3], @args[4])
             end function
             run = @length[len(evaluatedArgs)]
             return run(evaluatedArgs, @func)
@@ -286,7 +286,7 @@ globalEnv = Env(null) //global and general methods do not have access to environ
     globalEnv.__local["false"] = function()
         return false
     end function
-    globalEnv.__local["null"] = function() // WARNING: only use null for interacting with miniscript.
+    globalEnv.__local["null"] = function()
         return null
     end function
     globalEnv.__local["&"] = function(a, b)
@@ -299,7 +299,7 @@ globalEnv = Env(null) //global and general methods do not have access to environ
         return not @a
     end function
     globalEnv.__local["=="] = function(a, b)
-        return a == b
+        return @a == @b
     end function
     globalEnv.__local["!="] = function(a, b)
         return @a != @b
