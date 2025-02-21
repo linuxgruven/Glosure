@@ -35,6 +35,10 @@ Hello World!
 null
 ```
 
-The `print` refers to something called print, in this case it is a glosure. glosure means host function, in this case it is a GreyScript function.
+The `print` refers to something called print, in this case it is a glosure. glosure means a host native function, in this case it is a GreyScript native function.
 
-Whn
+The `()` means it is either:
+
+1. call a glosure
+2. call a lambda
+3. a keyword statement
