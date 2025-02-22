@@ -215,8 +215,8 @@ eval = function(expr, env) //evaluate Glosure s-expression
             return method(@object, @args[0], @args[1], @args[2], @args[3], @args[4])
         end function
         length.push(@temp)
-        if len(args) < 2 then return Error("Glosure: Runtime Error: dot keyword requires at least 2 arguments.")
-        if len(args) > len(length) - 1 then return Error("Glosure: Runtime Error: dot keyword take at most " + (len(length) + 1) + " params but received " + len(args) + " arguments.")
+        if len(expr) < 3 then return Error("Glosure: Runtime Error: dot keyword requires at least 2 arguments.")
+        if len(expr) > len(length) then return Error("Glosure: Runtime Error: dot keyword take at most " + (len(length) - 1) + " params but received " + (len(expr) - 1) + " arguments.")
         args = []
         for arg in expr[1:]
             args.push(eval(@arg, env))
