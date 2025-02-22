@@ -121,7 +121,7 @@ eval = function(expr, env) //evaluate Glosure s-expression
         end while
         return @result
     else if @first == "lambda" then //lambda statement
-        if len(@expr) < 3 then return Error("Glosure: Runtime Error: lambda keyword requires 3 or more arguments.")
+        if len(@expr) < 3 then return Error("Glosure: Runtime Error: lambda keyword requires 2 or more arguments.")
         if not @expr[1] isa list then return Error("Glosure: Runtime Error: lambda requires a list as params.")
         return {
             "classID": "lambda",
@@ -142,7 +142,7 @@ eval = function(expr, env) //evaluate Glosure s-expression
         if len(@expr) != 2 then return Error("Glosure: Runtime Error: eval keyword requires 1 argument.")
         return eval(eval(@expr[1], env), env)
     else if @first == "glosure" then //build a "glosure"(host function), advanced feature, extremely dangerous
-        if len(@expr) < 3 then return Error("Glosure: Runtime Error: glosure keyword requires 3 or more arguments.")
+        if len(@expr) < 3 then return Error("Glosure: Runtime Error: glosure keyword requires 2 or more arguments.")
         if not @expr[1] isa list then return Error("Glosure: Runtime Error: glosure requires a list as params.")
         if len(@expr[1]) > 5 then return Error("Glosure: Runtime Error: glosure can only take 5 or less params.")
         lambda = {
