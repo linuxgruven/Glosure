@@ -2,13 +2,13 @@
 
 ## 1. What is Glosure?
 
-Glosure is a scripting programming language with lisp-like syntax designed for Grey Hack. Glosure.gs is Glosure's reference implementation and it is a syntax processor/intepreter for Glosure in Grey Hack.
+Glosure is a scripting programming language with lisp-like syntax designed for Grey Hack. Glosure.gs is Glosure's reference implementation and it is a syntax processor/interpreter for Glosure in Grey Hack.
 
 The name for Glosure means "Grey hack closure". The name for Glosure.gs means "Glosure lisp-like object-oriented scripting user runtime environment".
 
 ## 2. Why use Glosure?
 
-Glosure can be used as a tool, an embedded intepreter for a tool, a scripting language, or the core intepreter of a bigger tool built upon Glosure.
+Glosure can be used as a tool, an embedded interpreter for a tool, a scripting language, or the core interpreter of a bigger tool built upon Glosure.
 
 ## 3. Get started.
 
@@ -26,11 +26,11 @@ It should prompts you a interface that looks like `</> `
 
 This is the REPL, you can input code here and it executes as soon as you press enter.
 
-for now, we input `(print 'Hello World!') ;prints 'Hello World!'` and hit enter.
+for now, we input `(print 'Hello World!') ;This expression prints 'Hello World!'.` and hit enter.
 
 Output should looks like:
 ```
-</> (print 'Hello World!') ;prints 'Hello World!'
+</> (print 'Hello World!') ;This expression prints 'Hello World!'.
 Hello World!
 null
 ```
@@ -45,17 +45,17 @@ The `()` means it is either:
 
 At here, `print` is the name of a glosure, so it calls the glosure with argument `'Hello World!'`
 
-To summerize, lambda name, glosure name or keyword goes to the first after a left bracket, and all arguments goes after it. End a call with right bracket. **Glosure `(a b c)` is like GreyScript `a(b, c)`.**
+To summerize, lambda name, glosure name or keyword goes to the first after a left parenthesis, and all arguments goes after it. End a call with right parenthesis. **Glosure `(a b c)` is like GreyScript `a(b, c)`.**
 
-A key difference between Glosure and GreyScript is, in Glosure you have to use brackets to call a glosure, if you only evaluates the name without brackets, it gives you a reference to the glosure. Like this:
+A key difference between Glosure and GreyScript is, in Glosure you have to use parenthesis to call a glosure, if you evaluates the name without parenthesis, it gives you a reference to the glosure. Like this:
 ```
 </> print
 FUNCTION(s="", replace_text=0)
 ```
 
-The `'` around `Hello World!` means this is a string, a string is a bunch of characters. **Glosure `'hi'` is like GreyScript `"hi"`, but not exactly the same value, we will explain later.**
+The `'` around `Hello World!` means this is a string, a string is a bunch of characters. **Glosure `'hi'` evaluates to GreyScript `"hi"`, but not exactly the same, we will explain later.**
 
-The `;` means what ever after it on the same line is a comment, comments gets ignored by the intepreter and is used for human to read.
+The `;` means what ever after it on the same line is a comment, comments gets ignored by the interpreter and is used for human to read.
 
 Putting all the peices together, this line means call glosure `print` with argument `'Hello World!'`, with a comment after this statement telling you this line of code prints hello world.
 
@@ -64,7 +64,7 @@ The `null` means the return value of this statement is `null`, it is the return 
 ## 4. Keywords
 There are 11 keywords in Glosure, they are:
 ```clojure
-def lambda if while begin exec eval glosure reflect dot list map
+def lambda if while begin exec eval glosure dot list map context
 ```
 `def` defines a variable. Used like `(def name 'value')`, this expression defines a variable called `name` with its value being `'value'`, variable means a value binded to a name.
 
@@ -72,8 +72,10 @@ def lambda if while begin exec eval glosure reflect dot list map
 if you want to run it as soon as it is defined, you can use it like this`((lambda (x) (* x x)) 2) ;returns 4`, if you want to use it later, you should give it a name with `def`, like `(def square (lambda (x) (* x x)))`.
 Once binded, you can call the lambda with `(square 2) ;returns 4`.
 
+`glosure` defines a glosure. Use it like `lambda` but returns a host native `function` instead of `lambda`. Use for host interop, do not use it when you can use `lambda` instead. This is advanced and dangerous.
+
 `if` is used to control which expression gets evaluated, and which does not.
-Use `if` like `(if (== 1 1) (print 'math works!') (print 'rocketorbit needs to fix the intepreter!'))`.
+Use `if` like `(if (== 1 1) (print 'math works!') (print 'rocketorbit needs to fix the interpreter!'))`.
 `if` takes either 2 or 3 arguments, it evaluates the first argument, if the result is not `0`, `null`, empty string, empty list or empty map, it evaluates the second statement and return the result.
 Otherwise it returns `null` or evaluate and return the third argument, depending on if there is the third argument.
 
@@ -86,15 +88,15 @@ It repeats evaluating the first argument, until it is either `0`, `null`, empty 
 
 `eval` is used to run a list as Glosure expression. This is VERY advanced and VERY dangerous, it requires you to have a very good understanding of both GreyScript and Glosure, and it is used for meta-programming. `eval` takes one argument.
 
-`glosure` is used to wrap a Glosure type value to a host type value. More specifically, it takes one argument, returns the argument if it is any type except lambda. For lambda, it returns a glosure.
-This is advanced and dangerous.
-
-`reflect` is used to reflect Glosure value to the host environment, this is VERY advanced and VERY dangerous.
-It takes in any number of arguments bigger than 3, and it evaluates and assign the second argument to `globals[third][fourth]....[n_th] = second`. It is used when a bigger tool is built upon/around Glosure for debugging or other purposes.
-
 `dot` is used to execute GreyScript methods. It takes 2 to 7 arguments, this first argument is the object, the second is the method name, the third to the seventh are arguments, `(dot (get_shell) 'host_computer')` is the same as GreyScript `get_shell().host_computer`. This causes crash if the method you are trying to run does not exist.
 
 `list` takes any number of arguments, evaluate them in order, and return a list with all of them.
 
 `map` takes any even number of arguments, evaluate them in order, and return a map with all of them, each odd one is the key, even one is the value.
 
+`context` takes no arguments and return a map to the current context. You should not abuse it.
+
+### All keywords needs to be invoked with parenthesis, the same way like a glosure or a lambda.
+
+## 5. Metaprogramming
+TODO
