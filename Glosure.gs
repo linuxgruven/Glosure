@@ -377,4 +377,14 @@ end function
 prepareCode = "" //This one is hardcoded code you can run at start up.
 env = Env(GlobalEnv)
 execute(prepareCode, env)
-repl(env)
+
+main = function
+    if not params then return repl(env)
+    if len(params) != 1 or params[0] == "--help" or params[0] == "-h" then return print("Start REPL: " + program_path.split("/")[-1] + char(10) + "Execute source file: " + program_path.split("/")[-1] + " [file_path]")
+    file = get_shell.host_computer.File(params[0])
+    if not file then return print("File not found.")
+    if not file.has_permission("r") then return print("Permission denied.")
+    codeStr = file.get_content
+    return execute(codeStr, env)
+end function
+main //If you are in an embedded environment, remove the main function completely
