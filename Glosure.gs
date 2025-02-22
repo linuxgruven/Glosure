@@ -83,6 +83,7 @@ reader = function(codeStr) //code string to s-expression
     return ["begin"] + stack[0]
 end function
 Env = function(__outer) //environment for Glosure, only build new environment when calling lambda.
+    Error = @Error
     env = {}
     env.classID = "env"
     env.__outer = __outer
@@ -248,13 +249,13 @@ eval = function(expr, env) //evaluate Glosure s-expression
         func = eval(@first, env)
         args = expr[1:]
         evaluatedArgs = []
-        for arg in args
-            evaluatedArgs.push(eval(@arg, env))
-        end for
         if @func isa map and hasIndex(func, "classID") and func.classID == "lambda" then
-            if len(evaluatedArgs) > len(func.params) then return Error("Glosure: Runtime Error: calling a lambda takes at most " + len(func.params) + " params but received " + len(evaluatedArgs) + " arguments.")
+            if len(args) > len(func.params) then return Error("Glosure: Runtime Error: calling a lambda takes at most " + len(func.params) + " params but received " + len(args) + " arguments.")
+            for arg in args
+                evaluatedArgs.push(eval(@arg, env))
+            end for
             while len(evaluatedArgs) < len(func.params)
-                evaluatedArgs.push(null) //append null for less arguments
+                evaluatedArgs.push(null) //append null for not enough arguments
             end while
             newEnv = Env(func.env)
             for i in indexes(func.params)
@@ -266,6 +267,9 @@ eval = function(expr, env) //evaluate Glosure s-expression
             end for
             return @result
         else if @func isa funcRef then
+            for arg in args
+                evaluatedArgs.push(eval(@arg, env))
+            end for
             length = []
             temp = function(args, func)
                 return func()
