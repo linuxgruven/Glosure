@@ -1,29 +1,6 @@
 Error = function(msg) //This is up to implementation to decide.
     return exit("<color=red><noparse>" + @msg + "</noparse></color>") //reference implementation simply panics. 
 end function
-tree = function(anyObject, depth = 5) //basically str() with custom depth limit, this walk the tree with recursion until everything is consumed.
-    if depth == 0 then return "..."
-    if @anyObject isa map then
-        if hasIndex(anyObject, "classID") then return @anyObject.classID //doesnt unfold Grey Hack object anymore
-        ret = []
-        for pair in anyObject
-            ret.push(tree(@pair.key, depth - 1) + ": " + tree(@pair.value, depth - 1))
-        end for
-        return "{" + ret.join(", ") + "}"
-    else
-        if @anyObject isa funcRef or anyObject isa number then return "" + @anyObject
-        if anyObject isa string then return """" + anyObject + """"
-        if anyObject isa list then
-            ret = []
-            for item in anyObject
-                ret.push(tree(@item, depth - 1))
-            end for
-            return "[" + ret.join(", ") + "]"
-        end if
-        if anyObject == null then return "null"
-        return "" + anyObject 
-    end if
-end function
 reader = function(codeStr) //code string to s-expression
     codeStr = values(codeStr)
     stack = [[]]
@@ -365,26 +342,12 @@ end function
 execute = function(codeStr, env)
     return eval(reader(codeStr), env)
 end function
-repl = function(env)
-    while true
-        codeStr = user_input("</> ")
-        if codeStr == ";quit" then break
-        result = eval(reader(codeStr), env)
-        if @result isa string then print(result) else print(tree(@result))
-    end while
-end function
 
-prepareCode = "" //This one is hardcoded code you can run at start up.
+prepareCode = "
+(if (! params) (while (!= (def code-str (user_input '</> ')) ';quit') (print (exec code-str)))
+    (if (| (!= (len params) 1) (| (== (at params 0) '-h') (== (at params 0) '--help')))
+        (print (join (list 'Start REPL: ' (at (split (program_path) '/') (- 0 1)) '\nExecute source file: ' (at (split (program_path) '/') (- 0 1)) ' [file_path]') ''))
+        (if (!(def file (dot (dot (get_shell) 'host_computer') 'File' (at params 0)))) (print 'File not found.') (if (dot file 'has_permission' 'r') (exec (dot file 'get_content')) (print 'Permission denied.')))))
+" //This one is hardcoded code you run at start up. Change it to your own for your own embedded apps.
 env = Env(GlobalEnv)
 execute(prepareCode, env)
-
-main = function
-    if not params then return repl(env)
-    if len(params) != 1 or params[0] == "--help" or params[0] == "-h" then return print("Start REPL: " + program_path.split("/")[-1] + char(10) + "Execute source file: " + program_path.split("/")[-1] + " [file_path]")
-    file = get_shell.host_computer.File(params[0])
-    if not file then return print("File not found.")
-    if not file.has_permission("r") then return print("Permission denied.")
-    codeStr = file.get_content
-    return execute(codeStr, env)
-end function
-main //If you are in an embedded environment, remove the main function completely
