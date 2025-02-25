@@ -1,0 +1,1 @@
+(def passgen (lambda (length) (if (> length 0) (+ (at '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' (floor (* (rnd) 62))) (passgen (- length 1))) '')))
