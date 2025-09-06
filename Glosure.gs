@@ -347,6 +347,7 @@ execute = function(codeStr, env)
 end function
 
 prepareCode = "
+(def params (if (hasIndex globals 'params') (at globals 'params') (list)))
 (if (! params) (while (!= (def code-str (user_input '</> ')) ';quit') (print (exec code-str)))
     (if (| (== (at params 0) '-h') (== (at params 0) '--help'))
         (print (join (list 'Start REPL: ' (at (split (program_path) '/') (- 0 1)) '\nExecute source file: ' (at (split (program_path) '/') (- 0 1)) ' [file_path]') ''))
