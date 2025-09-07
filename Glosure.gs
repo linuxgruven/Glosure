@@ -347,7 +347,7 @@ execute = function(codeStr, env)
 end function
 
 prepareCode = "
-(def exec-cmd (lambda (cmd) (begin (def cmd (pull (def args (split (trim cmd) ' ')))) (def args (join args)) (def comp (dot (get_shell) 'host_computer')) (def abs-path (if (dot comp 'File' (get_abs_path cmd)) (get_abs_path cmd) (if (dot comp 'File' (+ '/bin/' cmd)) (+ '/bin/' cmd) (if (dot comp 'File' (+ '/usr/bin/' cmd)) (+ '/usr/bin/' cmd) cmd)))) (dot (get_shell) 'launch' abs-path args)))))
+(def exec-cmd (lambda (cmd) (begin (def cmd (pull (def args (split (trim cmd) ' ')))) (def args (join args)) (def comp (dot (get_shell) 'host_computer')) (def abs-path (if (dot comp 'File' (get_abs_path cmd)) (get_abs_path cmd) (if (dot comp 'File' (+ '/bin/' cmd)) (+ '/bin/' cmd) (if (dot comp 'File' (+ '/usr/bin/' cmd)) (+ '/usr/bin/' cmd) cmd)))) (dot (get_shell) 'launch' abs-path args))))
 (def params (if (hasIndex globals 'params') (at globals 'params') (list)))
 (if (! params) (while (!= (def code-str (user_input '</> ')) ';quit') (if (== (indexOf code-str '(') null) (print (exec-cmd code-str)) (print (exec code-str))))
     (if (| (== (at params 0) '-h') (== (at params 0) '--help'))
