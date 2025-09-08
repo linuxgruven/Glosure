@@ -349,7 +349,7 @@ end function
 prepareCode = "
 (def exec-cmd (lambda (cmd) (begin (def cmd (pull (def args (split (trim cmd) ' ')))) (def args (join args)) (def comp (dot (get_shell) 'host_computer')) (def abs-path (if (dot comp 'File' (get_abs_path cmd)) (get_abs_path cmd) (if (dot comp 'File' (+ '/bin/' cmd)) (+ '/bin/' cmd) (if (dot comp 'File' (+ '/usr/bin/' cmd)) (+ '/usr/bin/' cmd) cmd)))) (dot (get_shell) 'launch' abs-path args))))
 (def params (if (hasIndex globals 'params') (at globals 'params') (list)))
-(if (! params) (while (!= (def code-str (user_input '</> ' 0 0 1)) ';quit') (if (== (indexOf code-str '(') null) (print (exec-cmd code-str)) (print (exec code-str))))
+(if (! params) (while (!= (def code-str (user_input '</> ' 0 0 1)) ';quit') (if code-str (if (== code-str 'clear') (clear_screen) (if (== code-str 'exit') (exit) (if (== (indexOf code-str '(') null) (print (exec-cmd code-str)) (print (exec code-str)))))))
     (if (| (== (at params 0) '-h') (== (at params 0) '--help'))
         (print (join (list 'Start REPL: ' (at (split (program_path) '/') (- 0 1)) '\nExecute source file: ' (at (split (program_path) '/') (- 0 1)) ' [file_path]') ''))
         (if (!(def file (dot (dot (get_shell) 'host_computer') 'File' (at params 0)))) (print 'File not found.') (if (dot file 'has_permission' 'r') (begin (def params (slice params 1)) (exec (dot file 'get_content'))) (print 'Permission denied.')))))
