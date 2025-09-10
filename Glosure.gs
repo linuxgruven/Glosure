@@ -340,19 +340,23 @@ GlobalEnv = function
         (@a)[@b] = @c
         return @c
     end function
-    general = {"active_user": @active_user, "bitwise": @bitwise, "clear_screen": @clear_screen, "command_info": @command_info, "current_date": @current_date, "current_path": @current_path, "exit": @exit, "format_columns": @format_columns, "get_abs_path": @get_abs_path, "get_ctf": @get_ctf, "get_custom_object": @get_custom_object, "get_router": @get_router, "get_shell": @get_shell, "get_switch": @get_switch, "home_dir": @home_dir, "include_lib": @include_lib, "is_lan_ip": @is_lan_ip, "is_valid_ip": @is_valid_ip, "launch_path": @launch_path, "mail_login": @mail_login, "nslookup": @nslookup, "parent_path": @parent_path, "print": @print, "program_path": @program_path, "reset_ctf_password": @reset_ctf_password, "typeof": @typeof, "user_bank_number": @user_bank_number, "user_input": @user_input, "user_mail_address": @user_mail_address, "wait": @wait, "whois": @whois, "to_int": @to_int, "time": @time, "abs": @abs, "acos": @acos, "asin": @asin, "atan": @atan, "ceil": @ceil, "char": @char, "cos": @cos, "floor": @floor, "log": @log, "pi": @pi, "range": @range, "round": @round, "rnd": @rnd, "sign": @sign, "sin": @sin, "sqrt": @sqrt, "str": @str, "tan": @tan, "yield": @yield, "slice": @slice, "number": @number, "string": @string, "list": @list, "map": @map, "funcRef": @funcRef, "globals": @globals, "true": true, "false": false, "null": null, "cd": @cd}
+    general = {"active_user": @active_user, "bitwise": @bitwise, "clear_screen": @clear_screen, "command_info": @command_info, "current_date": @current_date, "current_path": @current_path, "exit": @exit, "format_columns": @format_columns, "get_ctf": @get_ctf, "get_custom_object": @get_custom_object, "get_router": @get_router, "get_shell": @get_shell, "get_switch": @get_switch, "home_dir": @home_dir, "include_lib": @include_lib, "is_lan_ip": @is_lan_ip, "is_valid_ip": @is_valid_ip, "launch_path": @launch_path, "mail_login": @mail_login, "nslookup": @nslookup, "parent_path": @parent_path, "print": @print, "program_path": @program_path, "reset_ctf_password": @reset_ctf_password, "typeof": @typeof, "user_bank_number": @user_bank_number, "user_input": @user_input, "user_mail_address": @user_mail_address, "wait": @wait, "whois": @whois, "to_int": @to_int, "time": @time, "abs": @abs, "acos": @acos, "asin": @asin, "atan": @atan, "ceil": @ceil, "char": @char, "cos": @cos, "floor": @floor, "log": @log, "pi": @pi, "range": @range, "round": @round, "rnd": @rnd, "sign": @sign, "sin": @sin, "sqrt": @sqrt, "str": @str, "tan": @tan, "yield": @yield, "slice": @slice, "number": @number, "string": @string, "list": @list, "map": @map, "funcRef": @funcRef, "globals": @globals, "true": true, "false": false, "null": null}
+    if include_lib("/lib/testlib.so") == null then // Greybel compatibility
+        general["get_abs_path"] = @get_abs_path
+        general["cd"] = @cd
+    end if
     for method in general + string + list + map
         globalEnv.__local[@method.key] = @method.value
     end for
     return globalEnv
 end function
 
-__macros = {}
-preprocess = function(expr) // Preprocesses macros and stuff
-	fmap = function(f, expr) // Maps f(x) to s-expression
+preprocess = function(expr, env) // Preprocesses macros and stuff
+    if not env.__outest.hasIndex("__macros") then env.__outest.__macros = {} // for macros defined w/ defmacro
+	fmap = function(f, expr, env) // Maps f(x) to s-expression with env
 		expr = [] + expr
 		for i in expr.indexes
-			expr[i] = f(@expr[i])
+			expr[i] = f(@expr[i], env)
 		end for
 		return expr
 	end function
@@ -369,41 +373,58 @@ preprocess = function(expr) // Preprocesses macros and stuff
 		end for
 		return result
 	end function
+    gensym = function // Generates unique symbol
+        return "#:G" + (rnd + "").replace("\.", "_")
+    end function
 	if not @expr isa list then
 		return @expr
 	else
 		if expr.len == 0 then
-			return fmap(@preprocess, expr)
+			return fmap(@preprocess, expr, env)
 		else
 			keyword = expr[0]
-			if keyword == "defmacro" then
-				if expr.len <= 2 then return Error("Glosure: Preprocessing Error: defmacro keyword requires at least 2 arguments.")
+			if keyword == "defmacro" then // Macro definition
+				if expr.len != 5 then return Error("Glosure: Preprocessing Error: defmacro keyword requires 4 arguments.")
 				name = @expr[1]
-				if not @name isa string then return Error("Glosure: Preprocessing Error: defmacro keyword requires name to be an atom.")
-				args = @expr[2:-1]
+				if not @name isa string then return Error("Glosure: Preprocessing Error: defmacro keyword requires name to be a symbol.")
+				args = @expr[2]
+                if not @args isa list then return Error("Glosure: Preprocessing Error: defmacro keyword requires args to be an s-expression.")
 				for arg in args
-					if not @arg isa string then return Error("Glosure: Preprocessing Error: defmacro keyword requires each macro argument to be an atom.")
+					if not @arg isa string then return Error("Glosure: Preprocessing Error: defmacro keyword requires each macro argument to be a symbol.")
 				end for
-				body = @expr[-1]
-				if not @body isa string and not @body isa list then return Error("Glosure: Preprocessing Error: defmacro keyword requires body to be either an atom or an s-expression.")
+                syms = @expr[3]
+                if not @syms isa list then return Error("Glosure: Preprocessing Error: defmacro keyword requires macro gensym symbols to be an s-expression.")
+				for sym in syms
+					if not @sym isa string then return Error("Glosure: Preprocessing Error: defmacro keyword requires each macro gensym symbol to be a symbol.")
+				end for
+				body = @expr[4]
+				if not @body isa string and not @body isa list then return Error("Glosure: Preprocessing Error: defmacro keyword requires body to be either a symbol or an s-expression.")
 				if body isa list then
+                    for i in syms.indexes
+                        sym = syms[i]
+                        uniquesim = gensym // Translates into unique symbols in macro expansion
+                        syms[i] = uniquesim
+                        body = deepreplace(body, sym, uniquesim)
+                    end for
                     for i in args.indexes
                         arg = args[i]
-                        uniquearg = "__"+arg.upper+"_macroarg"
+                        uniquearg = gensym // So that args of macro won't overlap with symbols in expansion
                         args[i] = uniquearg
                         body = deepreplace(body, arg, uniquearg)
                     end for
                 end if
-                __macros[name] = [args, body]
-			else if __macros.hasIndex(keyword) then
+                env.__outest.__macros[name] = [args, body]
+			else if keyword == "quote" then // Symbols quoting
+                return "'"+expr[1:].join(" ")
+            else if env.__outest.__macros.hasIndex(keyword) then // Macro expansion
 				macroname = keyword
-				macroargs = __macros[macroname][0]
-				macrobody = __macros[macroname][1]
+				macroargs = env.__outest.__macros[macroname][0]
+				macrobody = env.__outest.__macros[macroname][1]
 				args = expr[1:]
 				if macroargs.len == 0 then
-					if args.len == 0 then return preprocess(macrobody)
+					if args.len == 0 then return preprocess(macrobody, env)
 					expr = [] + expr
-					expr[0] = preprocess(macrobody)
+					expr[0] = preprocess(macrobody, env)
 					return expr
 				else if macroargs.len != args.len then
 					return Error("Glosure: Preprocessing Error: "+macroname+" macro requires "+macroargs.len+" arguments.")
@@ -414,17 +435,17 @@ preprocess = function(expr) // Preprocesses macros and stuff
 						arg = args[i]
 						body = deepreplace(body, macroarg, arg)
 					end for
-					return preprocess(body)
+					return preprocess(body, env)
 				end if
 			else
-				return fmap(@preprocess, expr)
+				return fmap(@preprocess, expr, env)
 			end if
 		end if
 	end if
 end function
 
 execute = function(codeStr, env)
-    return eval(preprocess(reader(codeStr)), env)
+    return eval(preprocess(reader(codeStr), env), env)
 end function
 
 prepareCode = "
