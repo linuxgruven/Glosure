@@ -64,6 +64,11 @@ Env = function(__outer) //environment for Glosure, only build new environment wh
     env = {}
     env.classID = "env"
     env.__outer = __outer
+    if __outer == null then
+        env.__outest = null
+    else
+        if __outer.__outest == null then env.__outest = env else env.__outest = __outer.__outest
+    end if
     env.__local = {}
     env.get = function(symbol)
         if hasIndex(self.__local, @symbol) then return @self.__local[@symbol]
