@@ -342,8 +342,84 @@ GlobalEnv = function
     return globalEnv
 end function
 
+__macros = {}
+preprocess = function(expr) // Preprocesses macros and stuff
+	fmap = function(f, expr) // Maps f(x) to s-expression
+		expr = [] + expr
+		for i in expr.indexes
+			expr[i] = f(@expr[i])
+		end for
+		return expr
+	end function
+	deepreplace = function(expr, a, b) // Replaces an occurence of @a to @b in s-expression
+		result = []
+		for e in expr
+			if @e isa list then
+				result.push(deepreplace(e, @a, @b))
+			else if @e == @a then
+				result.push(@b)
+			else
+				result.push(@e)
+			end if
+		end for
+		return result
+	end function
+	if not @expr isa list then
+		return @expr
+	else
+		if expr.len == 0 then
+			return fmap(@preprocess, expr)
+		else
+			keyword = expr[0]
+			if keyword == "defmacro" then
+				if expr.len <= 2 then return Error("Glosure: Preprocessing Error: defmacro keyword requires at least 2 arguments.")
+				name = @expr[1]
+				if not @name isa string then return Error("Glosure: Preprocessing Error: defmacro keyword requires name to be an atom.")
+				args = @expr[2:-1]
+				for arg in args
+					if not @arg isa string then return Error("Glosure: Preprocessing Error: defmacro keyword requires each macro argument to be an atom.")
+				end for
+				body = @expr[-1]
+				if not @body isa string and not @body isa list then return Error("Glosure: Preprocessing Error: defmacro keyword requires body to be either an atom or an s-expression.")
+				if body isa list then
+                    for i in args.indexes
+                        arg = args[i]
+                        uniquearg = "__"+arg.upper+"_macroarg"
+                        args[i] = uniquearg
+                        body = deepreplace(body, arg, uniquearg)
+                    end for
+                end if
+                __macros[name] = [args, body]
+			else if __macros.hasIndex(keyword) then
+				macroname = keyword
+				macroargs = __macros[macroname][0]
+				macrobody = __macros[macroname][1]
+				args = expr[1:]
+				if macroargs.len == 0 then
+					if args.len == 0 then return preprocess(macrobody)
+					expr = [] + expr
+					expr[0] = preprocess(macrobody)
+					return expr
+				else if macroargs.len != args.len then
+					return Error("Glosure: Preprocessing Error: "+macroname+" macro requires "+macroargs.len+" arguments.")
+				else
+					body = [] + macrobody
+					for i in args.indexes
+						macroarg = macroargs[i]
+						arg = args[i]
+						body = deepreplace(body, macroarg, arg)
+					end for
+					return preprocess(body)
+				end if
+			else
+				return fmap(@preprocess, expr)
+			end if
+		end if
+	end if
+end function
+
 execute = function(codeStr, env)
-    return eval(reader(codeStr), env)
+    return eval(preprocess(reader(codeStr)), env)
 end function
 
 prepareCode = "
