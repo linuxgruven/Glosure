@@ -1,5 +1,5 @@
 ;; Macro that implements a C-like for loop
-(defmacro for initializer condition iterator body ((lambda ()
+(defmacro for (initializer condition iterator body) () ((lambda ()
     initializer
     (while condition (begin
         body
@@ -10,7 +10,7 @@
     (print i)))
 
 ;; Macro that implements a foreach loop
-(defmacro foreach container k v body ((lambda ()
+(defmacro foreach (container k v body) () ((lambda ()
     (def idxs (indexes container))
     (while (len idxs) (begin
         (def k (pull idxs))
