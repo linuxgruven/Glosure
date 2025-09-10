@@ -64,7 +64,7 @@ The `null` means the return value of this statement is `null`, it is the return 
 ## 4. Keywords
 There are 12 keywords in Glosure, they are:
 ```clojure
-def lambda if while begin exec eval glosure dot list map context defmacro
+def lambda if while begin exec eval glosure dot list map context defmacro quote
 ```
 `def` defines a variable. Used like `(def name 'value')`, this expression defines a variable called `name` with its value being `'value'`, variable means a value binded to a name.
 
@@ -96,38 +96,88 @@ It repeats evaluating the first argument, until it is either `0`, `null`, empty 
 
 `context` takes no arguments and return a map to the current context. You should not abuse it.
 
-`defmacro` takes from two to any number of arguments, defines a macro and returns null. See Metaprogramming section for more info.
+For other keywords please take a look into Metaprogramming section.
 
 ### All keywords needs to be invoked with parenthesis, the same way like a glosure or a lambda.
 
 ## 5. Metaprogramming
-Currently, Glosure allows defining macros as a way to metaprogram itself.
+
+Glosure is able to metaprogram itself with these keywords
+```clojure
+exec eval defmacro quote
+```
+
+### Quoting
+
+```clojure
+(quote) ;; returns an empty string
+(quote an example symbols) ;; returns 'an example symbols' string
+```
+Nothing more, nothing less
+
+### Evaluation and Execution
+
+You can evaluate an s-expression list with `eval`.
+```clojure
+(eval (list 'print' (quote hello world!))) ;; Equivalent of (print 'hello world!')
+```
+
+You can evaluane a string with `exec`:
+```clojure
+(exec '(print \'hello world!\')') ;; Self descriptive
+```
 
 ### Macros
-There are two ways to define a macro.
 
-First is without arguments, which you can think of as of an alias:
-```clojure
-(defmacro NAME KEYWORD)
-```
-Now every occurence of NAME will simply behave like KEYWORD you have tied to it.
+Macro is a way to define your own syntax within Glosure.
 
-Here is the example, with the `dot`:
+The syntax of defining a macro is as follows:
 ```clojure
-(defmacro _ dot) ;; Define a macro _ that will behave like dot
-(print (_ get_shell 'host_computer')) ;; Outputs computer, because _ is dot now
+(defmacro NAME (OPT_ARG_1 OPT_ARG_2 OPT_ARG_N) (OPT_GENSYM_1 OPT_GENSYM_2 OPT_GENSYM_M) IMPLEMENTATION)
+```
+Don't panic! It's simpler than it seems. Let's break it down:
+- `NAME` is, obviously, a name that your macro is going to be using, just like every builtin keyword has it's own name;
+- `OPT_ARG_N` are N arguments that are being taken by the macro. For example, `if` takes N = three arguments;
+- `OPT_GENSYM_M` are M symbols that going to be `gensym`ed. This is being used for hygienic macros, so if you're unsure what this is for, simply set no gensym symbols;
+- `IMPLEMENTATION` is to what your macro is going to expand into!
+
+It still seems hard, I know, so let me just get you to the examples. The simplest macro you can write is this:
+```clojure
+(defmacro _ () () dot)
+```
+So what it does? It expands `_` to `dot` and behaves alike to it! So now you can write:
+```clojure
+(_ get_shell 'host_computer')
+```
+And be sure it works exactly like:
+```clojure
+(dot get_shell 'host_computer')
+```
+Isn't that amazing?
+
+But that's not everything! Here is another example:
+```clojure
+(defmacro defun (name arguments body) () (def name (lambda arguments body)))
+```
+This one will allow us for `defun` keyword just like in other LISPs:
+```clojure
+(defun square (number) (* number number))
+(square 2) ;; 4
 ```
 
-Second is with arguments:
+And the last example is `swap`:
 ```clojure
-(defmacro NAME OPT_ARG_1 OPT_ARG_2 OPT_ARG_N IMPLEMENTATION)
+(defmacro swap (a b) (temp) (begin ;; Notice temp!
+  (def temp a)
+  (def a b)
+  (def b temp)))
 ```
-Now every occurence of NAME will act as a keyword with amount of arguments you have specified and it will expand to the IMPLEMENTATION logic.
+Which allows you to swap two variables
+```clojure
+(def x 1)
+(def y 5)
+(swap x y) ;; x = 5, y = 1
+(swap x y) ;; x = 1, y = 5 again
+```
 
-Here is the example, implementing `defun`:
-```clojure
-(defmacro defun name arguments body ;; Define a macro
-  (def name (lambda arguments
-    body)))
-(defun square (number) (* number number)) ;; This will expand to (def square (lambda (number) (* number number)))
-```
+Hope these examples are descriptive enough for you to start writing your own macros! You can find more examples at examples folder of the repository.
