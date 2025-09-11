@@ -389,8 +389,12 @@ preprocess = function(expr, env) // Preprocesses macros and stuff
         end for
         return result
     end function
-    gensym = function // Generates unique symbol
-        return "#:G" + (rnd + "").replace("\.", "_")
+    gensym = function // Generates unique symbol, with an unlikely chance to fail.
+        uniquesim = ""
+        for i in range(0, 7)
+            uniquesim = uniquesim + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"[floor(rnd * 62)]
+        end for
+        return "#:G" + uniquesim
     end function
     if not @expr isa list then
         return @expr
