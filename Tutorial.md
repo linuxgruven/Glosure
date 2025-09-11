@@ -187,7 +187,7 @@ And be sure it works exactly like:
 ```clojure
 (dot get_shell 'host_computer')
 ```
-Isn't that amazing?
+Isn't that amazing? You can also get that with a simple `(defalias _ dot)` from STL.
 
 But that's not everything! Here is another example:
 ```clojure
