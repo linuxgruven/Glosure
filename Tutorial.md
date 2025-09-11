@@ -156,7 +156,7 @@ You can evaluate an s-expression list with `eval`.
 (eval (list 'print' (quote hello world!))) ;; Equivalent of (print 'hello world!')
 ```
 
-You can evaluane a string with `exec`:
+You can evaluate a string with `exec`:
 ```clojure
 (exec '(print \'hello world!\')') ;; Self descriptive
 ```
