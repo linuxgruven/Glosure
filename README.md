@@ -24,18 +24,6 @@ Use `(lambda (arguments) (body))` to define an anonymous lambda expression(aka f
 
 Use `(glosure (arguments) (body))` to define an anonymous glosure(aka GreyScript function), you can bind it to a variable name with syntax like `(def square (glosure (x) (* x x)))`. This is only used for GreyScript interop and you should not use this when you can use lambda instead.
 
-Use `(while expression statement)` to loop without recursion.
-
-Use `(if expression statement optional_else_statement)` to use if or if-else statement.
-
-Use `(function_name argument_1 argument_2 argument_N)` to call a binded lambda or a binded glosure.
-
-Use `(dot object method_name argument_1 argument_2 argument_N)` to access a method under a grey hack object. This is dangerous and can cause crash if used incorrectly, read Manual.exe while using it.
-
-`(at name index)` essentially works like `name[index]`, you can use it on any container.
-
-`(set name index value)` essentially works like `name[index] = value`, you can use it on any container. It can also used to assign any `glosure` to host env with `globals`
-
 ### Other MiniScript general functions are likely supported, GreyHack general functions are supported but methods needs to invoked with `dot`.
 
 ### Detailed tutorial at Tutorial.md.
