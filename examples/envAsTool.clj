@@ -24,7 +24,7 @@
                 (def group (dot file 'group'))
                 (def type (if (== (dot file 'is_binary') 1) 'bin' (if (== (dot file 'is_binary') 1) 'fld' 'txt')))
                 (def wrx (+ (+ (if (dot file 'has_permission' 'w') 'w' '-') (if (dot file 'has_permission' 'r') 'r' '-')) (if (dot file 'has_permission' 'x') 'x' '-')))
-                (def output (join (list output '\\n' nameFile ' [' type '] [' wrx '] [' ((lambda (bits) (begin (def units (list 'B' 'KB' 'MB' 'GB' 'TB' 'PT')) (def i 0) (while (> bits 1024) (begin (def bits (/ bits 1024)) (def i (+ i 1))))(+ (round bits 2) (at units i)))) (to_int size)) '] [' permission '] [' owner '] [' group ']') '')))) ;not interesting
+                (def output (join (array output '\\n' nameFile ' [' type '] [' wrx '] [' ((lambda (bits) (begin (def units (array 'B' 'KB' 'MB' 'GB' 'TB' 'PT')) (def i 0) (while (> bits 1024) (begin (def bits (/ bits 1024)) (def i (+ i 1))))(+ (round bits 2) (at units i)))) (to_int size)) '] [' permission '] [' owner '] [' group ']') '')))) ;not interesting
             (format_columns output))))))
     
 )

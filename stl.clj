@@ -1,52 +1,47 @@
-(defmacro defun (name arguments body) ()
-    (def name (lambda arguments body)))
+;; Standard Glosure Library
+(defmacro defun (name arguments body) () (def name (lambda arguments body)))
 
-(defmacro defunction (name arguments body) ()
-    (def name (glosure arguments body)))
+(defmacro defunction (name arguments body) () (def name (glosure arguments body)))
 
-(defmacro for (initializer condition iterator body) ()
-    ((lambda () (begin
-        initializer
-        (while condition (begin
-            body
-            iterator))))))
+(defmacro while (condition body) () (if condition (loop body condition)))
 
-(defmacro foreach (key value collection body) (,keys)
-    ((lambda () (begin
-        (def ,keys (indexes collection))
-        (while ,keys (begin
-            (def key (pull ,keys))
+(defmacro do-while (condition body) () (loop body condition))
+
+(defmacro for (initializer condition iterator body) () ((lambda ()
+    initializer
+    (if condition (loop body iterator condition)))))
+
+(defmacro foreach (key value collection body) (keys) ((lambda () 
+    (def keys (indexes collection))
+    (if keys (begin
+        (loop 
+            (def key (pull keys))
             (def value (at collection key))
-            body))))))
+            body
+            keys)
+        value)))))
 
-(defmacro defalias (name keyword) ()
-    (defmacro name () () keyword))
+(defmacro defalias (name keyword) () (defmacro name () () keyword))
 
-(defmacro swap (a b) (,temp) (begin
-    (def ,temp a)
+(defmacro swap (a b) (temp) (begin
+    (def temp a)
     (def a b)
-    (def b ,temp)))
+    (def b temp)))
 
-(defmacro ++inc (var) ()
-    (def var (+ var 1)))
+(defmacro ++ (var) () (def var (+ var 1)))
 
-(defmacro inc++ (var) (,temp) (begin
-    (def ,temp var)
+(defmacro var++ (var) (temp) (begin
+    (def temp var)
     (def var (+ var 1))
-    ,temp))
+    temp))
 
-(defmacro --dec (var) ()
-    (def var (- var 1)))
+(defmacro -- (var) () (def var (- var 1)))
 
-(defmacro dec-- (var) (,temp) (begin
-    (def ,temp var)
+(defmacro var-- (var) (temp) (begin
+    (def temp var)
     (def var (- var 1))
-    ,temp))
+    temp))
 
-
-(def params
-    (if (hasIndex globals 'params')
-        (at globals 'params')
-        (list)))
+(def params (if (hasIndex globals 'params') (at globals 'params') (array)))
 
 (def script-path (program_path))

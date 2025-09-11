@@ -8,8 +8,8 @@
 (def a 1)
 (def b 5)
 
-(print (list a b))
+(print (array a b))
 (swap a b)
-(print (list a b))
+(print (array a b))
 (swap a b)
-(print (list a b))
+(print (array a b))

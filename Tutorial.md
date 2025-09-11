@@ -64,7 +64,7 @@ The `null` means the return value of this statement is `null`, it is the return 
 ## 4. Keywords
 There are 14 keywords in Glosure, they are:
 ```clojure
-def lambda if loop begin exec eval glosure dot list map context defmacro quote
+def lambda if loop begin exec eval glosure dot array dict context defmacro quote
 ```
 `def` defines a variable. Used like `(def name 'value')`, this expression defines a variable called `name` with its value being `'value'`, variable means a value binded to a name.
 
@@ -91,9 +91,9 @@ Additionally, `(loop)` without arguments halts the program in a dead loop foreve
 
 `dot` is used to execute GreyScript methods. It takes 2 to 7 arguments, this first argument is the object, the second is the method name, the third to the seventh are arguments, `(dot (get_shell) 'host_computer')` is the same as GreyScript `get_shell().host_computer`. This causes crash if the method you are trying to run does not exist.
 
-`list` takes any number of arguments, evaluate them in order, and return a list with all of them.
+`array` takes any number of arguments, evaluate them in order, and return a list with all of them.
 
-`map` takes any even number of arguments, evaluate them in order, and return a map with all of them, each odd one is the key, even one is the value.
+`dict` takes any even number of arguments, evaluate them in order, and return a map with all of them, each odd one is the key, even one is the value.
 
 `context` takes no arguments and return a map to the current context. You should not abuse it.
 
@@ -128,10 +128,10 @@ Glosure's STL introduces some keywords for more comfortable programming experien
 
 `foreach` is for GreyScript-like for loop:
 ```clojure
-(foreach index value (list 10 11 12)
-  (print (list index value))) ;; Prints [0, 10] [1, 11], [2, 12]
+(foreach index value (array 10 11 12)
+  (print (array index value))) ;; Prints [0, 10] [1, 11], [2, 12]
 (foreach key value (map 'a' 1 'b' 2 'c' 3)
-  (print (list key value))) ;; Prints ['a', 1] ['b', 2], ['c', 3]
+  (print (array key value))) ;; Prints ['a', 1] ['b', 2], ['c', 3]
 ```
 
 `swap` swaps two variables:
@@ -145,7 +145,7 @@ Glosure's STL introduces some keywords for more comfortable programming experien
 `--` is pre decrementation, `var--` is post decrementation
 ```clojure
 (def a 1)
-(print (list (var++ a) (++ a))) ;; [1, 3]
+(print (array (var++ a) (++ a))) ;; [1, 3]
 ```
 
 ## 5. Metaprogramming
@@ -167,7 +167,7 @@ Nothing more, nothing less
 
 You can evaluate an s-expression list with `eval`.
 ```clojure
-(eval (list 'print' (quote hello world!))) ;; Equivalent of (print 'hello world!')
+(eval (array 'print' (quote hello world!))) ;; Equivalent of (print 'hello world!')
 ```
 
 You can evaluate a string with `exec`:

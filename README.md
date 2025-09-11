@@ -14,9 +14,9 @@ Use `42` to repersent a number `42`, `true` is a predefined variable with a valu
 
 `null` is a predefined variable with a value `null`.
 
-Use `(list 1 2 'a')` to repersent a list `[1, 2, "a"]`
+Use `(array 1 2 'a')` to repersent a list `[1, 2, "a"]`
 
-Use `(map 'a' 1 'b' 2)` to repersent a map `{"a": 1, "b": 2}`, `globals` is a predefined map which references the GreyScript `globals` map.
+Use `(dict 'a' 1 'b' 2)` to repersent a map `{"a": 1, "b": 2}`, `globals` is a predefined map which references the GreyScript `globals` map.
 
 Use `(def name 'value')` to define a variable `name` with a value `"value"`
 

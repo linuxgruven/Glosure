@@ -25,25 +25,11 @@ reader = function(codeStr) //code string to s-expression
             token.push(c)
             while len(codeStr) and codeStr[0] != "'"
                 c = codeStr.pull
-                if c == "\" then //"
-                    if codeStr[0] == "t" then
-                        token.push(char(9))
-                        codeStr.pull
-                    else if codeStr[0] == "n" then
-                        token.push(char(10))
-                        codeStr.pull
-                    else if codeStr[0] == "r" then
-                        token.push(char(13))
-                        codeStr.pull
-                    else
-                        token.push(codeStr.pull)
-                    end if
-                else
-                    token.push(c)
-                end if
+                token.push(c)
+                if c == "\" then token.push(codeStr.pull)
             end while
             codeStr.pull
-            stack[-1].push(token.join(""))
+            stack[-1].push(token.join("") + "'")
         else if c == ";" then //ignore comment
             while len(codeStr) and codeStr[0] != char(10)
                 codeStr.pull
@@ -84,7 +70,31 @@ end function
 eval = function(expr, env) //evaluate Glosure s-expression
     if not @expr isa list then
         if not @expr isa string then return @expr
-        if expr[0] == "'" then return expr[1:] else return env.get(expr)
+        if expr[0] == "'" then
+            stri = expr[1:-1]
+            ret = []
+            i = 0
+            while i < len(stri)
+                if stri[i] == "\" and i < len(stri) - 1 then
+                    i = i + 1
+                    if stri[i] == "t" then
+                        ret.push(char(9))
+                    else if stri[i] == "n" then
+                        ret.push(char(10))
+                    else if stri[i] == "r" then
+                        ret.push(char(13))
+                    else
+                        ret.push(stri[i])
+                    end if
+                else
+                    ret.push(stri[i])
+                end if
+                i = i + 1
+            end while
+            return ret.join("")
+        else
+            return env.get(expr)
+        end if
     end if
     if not len(expr) then return null
     first = @expr[0]
@@ -214,13 +224,13 @@ eval = function(expr, env) //evaluate Glosure s-expression
         args = args[2:]
         run = @length[len(args)]
         return run(@object, @method, args)
-    else if @first == "list" then
+    else if @first == "array" then
         args = []
         for arg in expr[1:]
             args.push(eval(@arg, env))
         end for
         return args
-    else if @first == "map" then
+    else if @first == "dict" then
         args = []
         for arg in expr[1:]
             args.push(eval(@arg, env))
@@ -421,7 +431,19 @@ preprocess = function(expr, env) // Preprocesses macros and stuff
                 end if
                 env.__outest.__macros[name] = [args, body]
             else if keyword == "quote" then // Symbols quoting
-                return "'" + expr[1:].join(" ")
+                buildString = function(expr)
+                    if not expr isa list then return expr
+                    ret = []
+                    for atom in expr
+                        ret.push(buildString(atom))
+                    end for
+                    return "(" + ret.join(" ") + ")"
+                end function
+                ret = []
+                for atom in expr[1:]
+                    ret.push(buildString(atom))
+                end for
+                return "'" + ret.join(" ") + "'"
             else if env.__outest.__macros.hasIndex(keyword) then // Macro expansion
                 macroname = keyword
                 macroargs = env.__outest.__macros[macroname][0]
@@ -500,7 +522,7 @@ stl = "
     (def var (- var 1))
     temp))
 
-(def params (if (hasIndex globals 'params') (at globals 'params') (list)))
+(def params (if (hasIndex globals 'params') (at globals 'params') (array)))
 
 (def script-path (program_path))
 "
@@ -541,7 +563,7 @@ prepareCode = stl + char(10) + "
                         (exec-cmd code-str)
                         (print (exec code-str)))))))
             (if (| (== (at params 0) '-h') (== (at params 0) '--help'))
-                (print (join (list 'Start REPL: ' (at (split (program_path) '/') (- 0 1)) '\nExecute source file: ' (at (split (program_path) '/') (- 0 1)) ' [file_path]') ''))
+                (print (join (array 'Start REPL: ' (at (split (program_path) '/') (- 0 1)) '\nExecute source file: ' (at (split (program_path) '/') (- 0 1)) ' [file_path]') ''))
             (if (! (def file (dot (dot (get_shell) 'host_computer') 'File' (at params 0))))
                 (print 'File not found.')
             (if (dot file 'has_permission' 'r') (begin
