@@ -341,7 +341,7 @@ GlobalEnv = function
         return @c
     end function
     general = {"active_user": @active_user, "bitwise": @bitwise, "clear_screen": @clear_screen, "command_info": @command_info, "current_date": @current_date, "current_path": @current_path, "exit": @exit, "format_columns": @format_columns, "get_ctf": @get_ctf, "get_custom_object": @get_custom_object, "get_router": @get_router, "get_shell": @get_shell, "get_switch": @get_switch, "home_dir": @home_dir, "include_lib": @include_lib, "is_lan_ip": @is_lan_ip, "is_valid_ip": @is_valid_ip, "launch_path": @launch_path, "mail_login": @mail_login, "nslookup": @nslookup, "parent_path": @parent_path, "print": @print, "program_path": @program_path, "reset_ctf_password": @reset_ctf_password, "typeof": @typeof, "user_bank_number": @user_bank_number, "user_input": @user_input, "user_mail_address": @user_mail_address, "wait": @wait, "whois": @whois, "to_int": @to_int, "time": @time, "abs": @abs, "acos": @acos, "asin": @asin, "atan": @atan, "ceil": @ceil, "char": @char, "cos": @cos, "floor": @floor, "log": @log, "pi": @pi, "range": @range, "round": @round, "rnd": @rnd, "sign": @sign, "sin": @sin, "sqrt": @sqrt, "str": @str, "tan": @tan, "yield": @yield, "slice": @slice, "number": @number, "string": @string, "list": @list, "map": @map, "funcRef": @funcRef, "globals": @globals, "true": true, "false": false, "null": null}
-    if include_lib("/lib/testlib.so") == null then // Greybel compatibility
+    if typeof(include_lib("/lib/testlib.so")) != "TestLib" then // Greybel compatibility
         general["get_abs_path"] = @get_abs_path
         general["cd"] = @cd
     end if
@@ -449,13 +449,108 @@ execute = function(codeStr, env)
 end function
 
 prepareCode = "
-(def exec-cmd (lambda (cmd) (begin (def cmd (pull (def args (split (trim cmd) ' ')))) (def args (join args)) (def comp (dot (get_shell) 'host_computer')) (def file (if (dot comp 'File' (get_abs_path cmd)) (dot comp 'File' (get_abs_path cmd)) (if (dot comp 'File' (+ '/bin/' cmd)) (dot comp 'File' (+ '/bin/' cmd)) (if (dot comp 'File' (+ '/usr/bin/' cmd)) (dot comp 'File' (+ '/usr/bin/' cmd)) null)))) (if file (if (| (dot file 'is_folder') (dot file 'is_binary')) (dot (get_shell) 'launch' (dot file 'path') args) (if (dot file 'has_permission' 'r') (dot (get_shell) 'launch' (program_path) (+ (dot file 'path') (+ ' ' args))) (print 'Permission denied.'))) (print (+ cmd ': command not found'))))))
-(def params (if (hasIndex globals 'params') (at globals 'params') (list)))
+;;
+;; STL
+;;
+(defmacro defun (name arguments body) ()
+    (def name (lambda arguments body)))
+
+(defmacro defunction (name arguments body) ()
+    (def name (glosure arguments body)))
+
+(defmacro for (initializer condition iterator body) ()
+    ((lambda () (begin
+        initializer
+        (while condition (begin
+            body
+            iterator))))))
+
+(defmacro foreach (key value collection body) (,keys)
+    ((lambda () (begin
+        (def ,keys (indexes collection))
+        (while ,keys (begin
+            (def key (pull ,keys))
+            (def value (at collection key))
+            body))))))
+
+(defmacro defalias (name keyword) ()
+    (defmacro name () () keyword))
+
+(defmacro swap (a b) (,temp) (begin
+    (def ,temp a)
+    (def a b)
+    (def b ,temp)))
+
+(defmacro ++inc (var) ()
+    (def var (+ var 1)))
+
+(defmacro inc++ (var) (,temp) (begin
+    (def ,temp var)
+    (def var (+ var 1))
+    ,temp))
+
+(defmacro --dec (var) ()
+    (def var (- var 1)))
+
+(defmacro dec-- (var) (,temp) (begin
+    (def ,temp var)
+    (def var (- var 1))
+    ,temp))
+
+
+(def params
+    (if (hasIndex globals 'params')
+        (at globals 'params')
+        (list)))
+
 (def script-path (program_path))
-(if (! params) (while (!= (def code-str (user_input '</> ' 0 0 1)) ';quit') (if code-str (if (== code-str 'clear') (clear_screen) (if (== code-str 'exit') (exit) (if (== (indexOf code-str '(') null) (exec-cmd code-str) (print (exec code-str)))))))
-    (if (| (== (at params 0) '-h') (== (at params 0) '--help'))
-        (print (join (list 'Start REPL: ' (at (split (program_path) '/') (- 0 1)) '\nExecute source file: ' (at (split (program_path) '/') (- 0 1)) ' [file_path]') ''))
-        (if (!(def file (dot (dot (get_shell) 'host_computer') 'File' (at params 0)))) (print 'File not found.') (if (dot file 'has_permission' 'r') (begin (def params (slice params 1)) (def script-path (dot file 'path')) (exec (dot file 'get_content'))) (print 'Permission denied.')))))
+
+
+
+
+;;
+;; REPL
+;;
+(if (== (typeof (include_lib '/lib/testlib.so')) 'TestLib')
+    (print 'REPL is unavailable in Greybel.')
+    (begin
+        (def exec-cmd (lambda (cmd) (begin
+            (def cmd (pull (def args (split (trim cmd) ' '))))
+            (def args (join args))
+            (def comp (dot (get_shell) 'host_computer'))
+            (def file
+                (if (dot comp 'File' (get_abs_path cmd))
+                    (dot comp 'File' (get_abs_path cmd))
+                (if (dot comp 'File' (+ '/bin/' cmd)) 
+                    (dot comp 'File' (+ '/bin/' cmd))
+                (if (dot comp 'File' (+ '/usr/bin/' cmd)) 
+                    (dot comp 'File' (+ '/usr/bin/' cmd)) null))))
+            (if file
+                (if (| (dot file 'is_folder') (dot file 'is_binary')) 
+                    (dot (get_shell) 'launch' (dot file 'path') args) 
+                (if (dot file 'has_permission' 'r')
+                    (dot (get_shell) 'launch' (program_path) (+ (dot file 'path') (+ ' ' args)))
+                    (print 'Permission denied.')))
+                (print (+ cmd ': command not found'))))))
+        (if (! params)
+            (while (!= (def code-str (user_input '</> ' 0 0 1)) (+ (char 59) 'quit'))
+                (if code-str
+                    (if (== code-str 'clear')
+                        (clear_screen)
+                    (if (== code-str 'exit')
+                        (exit)
+                    (if (== (indexOf code-str (char 40)) null)
+                        (exec-cmd code-str)
+                        (print (exec code-str)))))))
+            (if (| (== (at params 0) '-h') (== (at params 0) '--help'))
+                (print (join (list 'Start REPL: ' (at (split (program_path) '/') (- 0 1)) '\nExecute source file: ' (at (split (program_path) '/') (- 0 1)) ' [file_path]') ''))
+            (if (! (def file (dot (dot (get_shell) 'host_computer') 'File' (at params 0))))
+                (print 'File not found.')
+            (if (dot file 'has_permission' 'r') (begin
+                (def params (slice params 1))
+                (def script-path (dot file 'path'))
+                (exec (dot file 'get_content')))
+            (print 'Permission denied.')))))))
 " //This one is hardcoded code you run at start up. Change it to your own for your own embedded apps.
 env = Env(GlobalEnv)
 execute(prepareCode, env)
