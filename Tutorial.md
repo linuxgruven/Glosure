@@ -100,6 +100,40 @@ For other keywords please take a look into Metaprogramming section.
 
 ### All keywords needs to be invoked with parenthesis, the same way like a glosure or a lambda.
 
+Glosure's STL introduces some keywords for more comfortable programming experience.
+
+`(defun NAME ARGS BODY)` is the same as `(def NAME (lambda ARGS BODY))`
+
+`(defunction NAME ARGS BODY)` is the same as `(def NAME (glosure ARGS BODY))`
+
+`for` is for C-like for loop:
+```clojure
+(for (def i 0) (< i 5) (def i (+ i 1))
+  (print i)) ;; Prints 0 1 2 3 4
+```
+
+`foreach` is for GreyScript-like for loop:
+```clojure
+(foreach index value (list 10 11 12)
+  (print (list index value)) prints [0, 10] [1, 11], [2, 12]
+(foreach key value (map 'a' 1 'b' 2 'c' 3)
+  (print (list key value)) prints ['a', 1] ['b', 2], ['c', 3]
+```
+
+`swap` swaps two variables:
+```clojure
+(def a 5)
+(def b 10)
+(swap a b) ;; now a = 10 and b = 5
+```
+
+`++inc` is pre incrementation, `inc++` is post incrementation
+`--dec` is pre decrementation, `dec--` is post decrementation
+```clojure
+(def a 1)
+(print (list (inc++ a) (++inc a))) ;; [1, 3]
+```
+
 ## 5. Metaprogramming
 
 Glosure is able to metaprogram itself with these keywords
