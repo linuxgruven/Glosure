@@ -425,7 +425,7 @@ preprocess = function(expr, env) // Preprocesses macros and stuff
 					if args.len == 0 then return preprocess(macrobody, env)
 					expr = [] + expr
 					expr[0] = preprocess(macrobody, env)
-					return expr
+					return preprocess(expr, env)
 				else if macroargs.len != args.len then
 					return Error("Glosure: Preprocessing Error: "+macroname+" macro requires "+macroargs.len+" arguments.")
 				else
