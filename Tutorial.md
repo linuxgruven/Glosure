@@ -62,9 +62,9 @@ Putting all the peices together, this line means call glosure `print` with argum
 The `null` means the return value of this statement is `null`, it is the return value of `print`, and the REPL always print the return value.
 
 ## 4. Keywords
-There are 12 keywords in Glosure, they are:
+There are 14 keywords in Glosure, they are:
 ```clojure
-def lambda if while begin exec eval glosure dot list map context defmacro quote
+def lambda if loop begin exec eval glosure dot list map context defmacro quote
 ```
 `def` defines a variable. Used like `(def name 'value')`, this expression defines a variable called `name` with its value being `'value'`, variable means a value binded to a name.
 
@@ -79,8 +79,9 @@ Use `if` like `(if (== 1 1) (print 'math works!') (print 'rocketorbit needs to f
 `if` takes either 2 or 3 arguments, it evaluates the first argument, if the result is not `0`, `null`, empty string, empty list or empty map, it evaluates the second statement and return the result.
 Otherwise it returns `null` or evaluate and return the third argument, depending on if there is the third argument.
 
-`while` is used to loop. The syntax for while is like `(while (1) (print 'spam!'))`, `while` takes 2 arguments, it evaluates the first argument, if the result is not `0`, `null`, empty string, empty list or empty map, it evaluates the second, and then evalutates the first again.
-It repeats evaluating the first argument, until it is either `0`, `null`, empty string, empty list or empty map. When the first argument evaluates to these values, it stops evalutating the second argument, and return the last result of the second.
+`loop` is used to loop. The syntax for loop is like `(loop (print 'spam!') 1)`, `loop` takes any amount of arguments, it evaluates all argument, if the last argument is not `0`, `null`, empty string, empty list or empty map, it evaluates every argument again.
+It repeats evaluating all its argument, until the last argument is either `0`, `null`, empty string, empty list or empty map. When the last argument evaluates to these values, it stops evalutating, and return the last result of the last argument.
+Additionally, `(loop)` without arguments halts the program in a dead loop forever.
 
 `begin` is used to combine multiple expressions. It evaluates them in order, return the last one. `begin` takes any number of arguments.
 
@@ -106,6 +107,19 @@ Glosure's STL introduces some keywords for more comfortable programming experien
 
 `(defunction NAME ARGS BODY)` is the same as `(def NAME (glosure ARGS BODY))`
 
+`while` is for C-like while loop, with no break or continue.
+```clojure
+(def i 0)
+(while (< i 10) (begin
+  (print i)
+  (def i (+ i 1))))
+```
+
+`do-while` is for C-like do-while loop, with no break or continue.
+```clojure
+(do-while 0 (print 'prints anyway.'))
+```
+
 `for` is for C-like for loop:
 ```clojure
 (for (def i 0) (< i 5) (def i (+ i 1))
@@ -115,9 +129,9 @@ Glosure's STL introduces some keywords for more comfortable programming experien
 `foreach` is for GreyScript-like for loop:
 ```clojure
 (foreach index value (list 10 11 12)
-  (print (list index value)) prints [0, 10] [1, 11], [2, 12]
+  (print (list index value))) ;; Prints [0, 10] [1, 11], [2, 12]
 (foreach key value (map 'a' 1 'b' 2 'c' 3)
-  (print (list key value)) prints ['a', 1] ['b', 2], ['c', 3]
+  (print (list key value))) ;; Prints ['a', 1] ['b', 2], ['c', 3]
 ```
 
 `swap` swaps two variables:
@@ -127,11 +141,11 @@ Glosure's STL introduces some keywords for more comfortable programming experien
 (swap a b) ;; now a = 10 and b = 5
 ```
 
-`++inc` is pre incrementation, `inc++` is post incrementation
-`--dec` is pre decrementation, `dec--` is post decrementation
+`++` is pre incrementation, `var++` is post incrementation
+`--` is pre decrementation, `var--` is post decrementation
 ```clojure
 (def a 1)
-(print (list (inc++ a) (++inc a))) ;; [1, 3]
+(print (list (var++ a) (++ a))) ;; [1, 3]
 ```
 
 ## 5. Metaprogramming
