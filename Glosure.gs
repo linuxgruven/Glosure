@@ -95,11 +95,17 @@ eval = function(expr, env) //evaluate Glosure s-expression
         if len(@expr) < 3 then return Error("Glosure: Runtime Error: if keyword requires 2 or 3 arguments.")
         if eval(@expr[1], env) then return eval(@expr[2], env)
         if len(@expr) > 3 then return eval(@expr[3], env) else return null
-    else if @first == "while" then //while loop, with no break keyword.
-        if len(@expr) != 3 then return Error("Glosure: Runtime Error: while keyword requires 2 arguments.")
+    else if @first == "loop" then //loop if the last argument evaluate to true.
+        while len(@expr) == 1 //(loop) halts the program forever.
+        end while
         result = null
-        while eval(@expr[1], env)
-            result = eval(@expr[2], env)
+        for stmt in @expr[1:]
+            result = eval(@stmt, env)
+        end for
+        while @result
+            for stmt in @expr[1:]
+                result = eval(@stmt, env)
+            end for
         end while
         return @result
     else if @first == "lambda" then //lambda statement
@@ -353,53 +359,53 @@ end function
 
 preprocess = function(expr, env) // Preprocesses macros and stuff
     if not env.__outest.hasIndex("__macros") then env.__outest.__macros = {} // for macros defined w/ defmacro
-	fmap = function(f, expr, env) // Maps f(x) to s-expression with env
-		expr = [] + expr
-		for i in expr.indexes
-			expr[i] = f(@expr[i], env)
-		end for
-		return expr
-	end function
-	deepreplace = function(expr, a, b) // Replaces an occurence of @a to @b in s-expression
-		result = []
-		for e in expr
-			if @e isa list then
-				result.push(deepreplace(e, @a, @b))
-			else if @e == @a then
-				result.push(@b)
-			else
-				result.push(@e)
-			end if
-		end for
-		return result
-	end function
+    fmap = function(f, expr, env) // Maps f(x) to s-expression with env
+        expr = [] + expr
+        for i in expr.indexes
+            expr[i] = f(@expr[i], env)
+        end for
+        return expr
+    end function
+    deepreplace = function(expr, a, b) // Replaces an occurence of @a to @b in s-expression
+        result = []
+        for e in expr
+            if @e isa list then
+                result.push(deepreplace(e, @a, @b))
+            else if @e == @a then
+                result.push(@b)
+            else
+                result.push(@e)
+            end if
+        end for
+        return result
+    end function
     gensym = function // Generates unique symbol
         return "#:G" + (rnd + "").replace("\.", "_")
     end function
-	if not @expr isa list then
-		return @expr
-	else
-		if expr.len == 0 then
-			return fmap(@preprocess, expr, env)
-		else
-			keyword = expr[0]
-			if keyword == "defmacro" then // Macro definition
-				if expr.len != 5 then return Error("Glosure: Preprocessing Error: defmacro keyword requires 4 arguments.")
-				name = @expr[1]
-				if not @name isa string then return Error("Glosure: Preprocessing Error: defmacro keyword requires name to be a symbol.")
-				args = @expr[2]
+    if not @expr isa list then
+        return @expr
+    else
+        if expr.len == 0 then
+            return fmap(@preprocess, expr, env)
+        else
+            keyword = expr[0]
+            if keyword == "defmacro" then // Macro definition
+                if expr.len != 5 then return Error("Glosure: Preprocessing Error: defmacro keyword requires 4 arguments.")
+                name = @expr[1]
+                if not @name isa string then return Error("Glosure: Preprocessing Error: defmacro keyword requires name to be a symbol.")
+                args = @expr[2]
                 if not @args isa list then return Error("Glosure: Preprocessing Error: defmacro keyword requires args to be an s-expression.")
-				for arg in args
-					if not @arg isa string then return Error("Glosure: Preprocessing Error: defmacro keyword requires each macro argument to be a symbol.")
-				end for
+                for arg in args
+                    if not @arg isa string then return Error("Glosure: Preprocessing Error: defmacro keyword requires each macro argument to be a symbol.")
+                end for
                 syms = @expr[3]
                 if not @syms isa list then return Error("Glosure: Preprocessing Error: defmacro keyword requires macro gensym symbols to be an s-expression.")
-				for sym in syms
-					if not @sym isa string then return Error("Glosure: Preprocessing Error: defmacro keyword requires each macro gensym symbol to be a symbol.")
-				end for
-				body = @expr[4]
-				if not @body isa string and not @body isa list then return Error("Glosure: Preprocessing Error: defmacro keyword requires body to be either a symbol or an s-expression.")
-				if body isa list then
+                for sym in syms
+                    if not @sym isa string then return Error("Glosure: Preprocessing Error: defmacro keyword requires each macro gensym symbol to be a symbol.")
+                end for
+                body = @expr[4]
+                if not @body isa string and not @body isa list then return Error("Glosure: Preprocessing Error: defmacro keyword requires body to be either a symbol or an s-expression.")
+                if body isa list then
                     for i in syms.indexes
                         sym = syms[i]
                         uniquesim = gensym // Translates into unique symbols in macro expansion
@@ -414,100 +420,92 @@ preprocess = function(expr, env) // Preprocesses macros and stuff
                     end for
                 end if
                 env.__outest.__macros[name] = [args, body]
-			else if keyword == "quote" then // Symbols quoting
-                return "'"+expr[1:].join(" ")
+            else if keyword == "quote" then // Symbols quoting
+                return "'" + expr[1:].join(" ")
             else if env.__outest.__macros.hasIndex(keyword) then // Macro expansion
-				macroname = keyword
-				macroargs = env.__outest.__macros[macroname][0]
-				macrobody = env.__outest.__macros[macroname][1]
-				args = expr[1:]
-				if macroargs.len == 0 then
-					if args.len == 0 then return preprocess(macrobody, env)
-					expr = [] + expr
-					expr[0] = preprocess(macrobody, env)
-					return preprocess(expr, env)
-				else if macroargs.len != args.len then
-					return Error("Glosure: Preprocessing Error: "+macroname+" macro requires "+macroargs.len+" arguments.")
-				else
-					body = [] + macrobody
-					for i in args.indexes
-						macroarg = macroargs[i]
-						arg = args[i]
-						body = deepreplace(body, macroarg, arg)
-					end for
-					return preprocess(body, env)
-				end if
-			else
-				return fmap(@preprocess, expr, env)
-			end if
-		end if
-	end if
+                macroname = keyword
+                macroargs = env.__outest.__macros[macroname][0]
+                macrobody = env.__outest.__macros[macroname][1]
+                args = expr[1:]
+                if macroargs.len == 0 then
+                    if args.len == 0 then return preprocess(macrobody, env)
+                    expr = [] + expr
+                    expr[0] = preprocess(macrobody, env)
+                    return preprocess(expr, env)
+                else if macroargs.len != args.len then
+                    return Error("Glosure: Preprocessing Error: " + macroname + " macro requires " + macroargs.len + " arguments.")
+                else
+                    body = [] + macrobody
+                    for i in args.indexes
+                        macroarg = macroargs[i]
+                        arg = args[i]
+                        body = deepreplace(body, macroarg, arg)
+                    end for
+                    return preprocess(body, env)
+                end if
+            else
+                return fmap(@preprocess, expr, env)
+            end if
+        end if
+    end if
 end function
 
 execute = function(codeStr, env)
     return eval(preprocess(reader(codeStr), env), env)
 end function
 
-prepareCode = "
-;;
-;; STL
-;;
-(defmacro defun (name arguments body) ()
-    (def name (lambda arguments body)))
+//Standard Glosure Library
+stl = "
+;; Standard Glosure Library
+(defmacro defun (name arguments body) () (def name (lambda arguments body)))
 
-(defmacro defunction (name arguments body) ()
-    (def name (glosure arguments body)))
+(defmacro defunction (name arguments body) () (def name (glosure arguments body)))
 
-(defmacro for (initializer condition iterator body) ()
-    ((lambda () (begin
-        initializer
-        (while condition (begin
-            body
-            iterator))))))
+(defmacro while (condition body) () (if condition (loop body condition)))
 
-(defmacro foreach (key value collection body) (,keys)
-    ((lambda () (begin
-        (def ,keys (indexes collection))
-        (while ,keys (begin
-            (def key (pull ,keys))
+(defmacro do-while (condition body) () (loop body condition))
+
+(defmacro for (initializer condition iterator body) () ((lambda ()
+    initializer
+    (if condition (loop body iterator condition)))))
+
+(defmacro foreach (key value collection body) (keys) ((lambda () 
+    (def keys (indexes collection))
+    (if keys (begin
+        (loop 
+            (def key (pull keys))
             (def value (at collection key))
-            body))))))
+            body
+            keys)
+        value)))))
 
-(defmacro defalias (name keyword) ()
-    (defmacro name () () keyword))
+(defmacro defalias (name keyword) () (defmacro name () () keyword))
 
-(defmacro swap (a b) (,temp) (begin
-    (def ,temp a)
+(defmacro swap (a b) (temp) (begin
+    (def temp a)
     (def a b)
-    (def b ,temp)))
+    (def b temp)))
 
-(defmacro ++inc (var) ()
-    (def var (+ var 1)))
+(defmacro ++ (var) () (def var (+ var 1)))
 
-(defmacro inc++ (var) (,temp) (begin
-    (def ,temp var)
+(defmacro var++ (var) (temp) (begin
+    (def temp var)
     (def var (+ var 1))
-    ,temp))
+    temp))
 
-(defmacro --dec (var) ()
-    (def var (- var 1)))
+(defmacro -- (var) () (def var (- var 1)))
 
-(defmacro dec-- (var) (,temp) (begin
-    (def ,temp var)
+(defmacro var-- (var) (temp) (begin
+    (def temp var)
     (def var (- var 1))
-    ,temp))
+    temp))
 
-
-(def params
-    (if (hasIndex globals 'params')
-        (at globals 'params')
-        (list)))
+(def params (if (hasIndex globals 'params') (at globals 'params') (list)))
 
 (def script-path (program_path))
+"
 
-
-
-
+prepareCode = stl + char(10) + "
 ;;
 ;; REPL
 ;;
