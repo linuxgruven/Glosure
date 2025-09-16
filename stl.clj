@@ -23,25 +23,27 @@
 
 (defmacro defalias (name keyword) () (defmacro name () () keyword))
 
-(defmacro swap (a b) (temp) (begin
-    (def temp a)
+(defmacro swap (a b) (!temp) (begin
+    (def !temp a)
     (def a b)
-    (def b temp)))
+    (def b !temp)))
 
 (defmacro ++ (var) () (def var (+ var 1)))
 
-(defmacro var++ (var) (temp) (begin
-    (def temp var)
+(defmacro var++ (var) (!temp) (begin
+    (def !temp var)
     (def var (+ var 1))
-    temp))
+    !temp))
 
 (defmacro -- (var) () (def var (- var 1)))
 
-(defmacro var-- (var) (temp) (begin
-    (def temp var)
+(defmacro var-- (var) (!temp) (begin
+    (def !temp var)
     (def var (- var 1))
-    temp))
+    !temp))
 
 (def params (if (hasIndex globals 'params') (at globals 'params') (array)))
 
 (def script-path (program_path))
+
+(defun gensym () (exec '(defmacro _ () (sym) (quote sym))(_)')) ;; Unquote is needed to make it any usefull

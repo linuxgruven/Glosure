@@ -369,6 +369,7 @@ end function
 
 preprocess = function(expr, env) // Preprocesses macros and stuff
     if not env.__outest.hasIndex("__macros") then env.__outest.__macros = {} // for macros defined w/ defmacro
+    if not env.__outest.hasIndex("__symbols") then env.__outest.__symbols = [] // gensym(env) calls
     fmap = function(f, expr, env) // Maps f(x) to s-expression with env
         expr = [] + expr
         for i in expr.indexes
@@ -389,12 +390,21 @@ preprocess = function(expr, env) // Preprocesses macros and stuff
         end for
         return result
     end function
-    gensym = function // Generates unique symbol, with an unlikely chance to fail.
-        uniquesim = ""
-        for i in range(0, 7)
-            uniquesim = uniquesim + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"[floor(rnd * 62)]
-        end for
-        return "#:G" + uniquesim
+    gensym = function(env) // Generates and ensures a unique symbol.
+        randsym = function
+            uniquesim = ""
+            for i in range(0, 7)
+                uniquesim = uniquesim + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"[floor(rnd * 62)]
+            end for
+            return "#:G" + uniquesim
+        end function
+        while true
+            sym = randsym
+            if env.__outest.__symbols.indexOf(sym) == null then
+                env.__outest.__symbols.push(sym)
+                return sym
+            end if
+        end while
     end function
     if not @expr isa list then
         return @expr
@@ -422,13 +432,13 @@ preprocess = function(expr, env) // Preprocesses macros and stuff
                 if body isa list then
                     for i in syms.indexes
                         sym = syms[i]
-                        uniquesim = gensym // Translates into unique symbols in macro expansion
+                        uniquesim = gensym(env) // Translates into unique symbols in macro expansion
                         syms[i] = uniquesim
                         body = deepreplace(body, sym, uniquesim)
                     end for
                     for i in args.indexes
                         arg = args[i]
-                        uniquearg = gensym // So that args of macro won't overlap with symbols in expansion
+                        uniquearg = gensym(env) // So that args of macro won't overlap with symbols in expansion
                         args[i] = uniquearg
                         body = deepreplace(body, arg, uniquearg)
                     end for
@@ -529,6 +539,8 @@ stl = "
 (def params (if (hasIndex globals 'params') (at globals 'params') (array)))
 
 (def script-path (program_path))
+
+(defun gensym () (exec '(defmacro _ () (sym) (quote sym))(_)')) ;; Unquote is needed to make it any usefull
 "
 
 prepareCode = stl + char(10) + "
